@@ -57,6 +57,8 @@ function boot({ width = 390, idb } = {}) {
   w.calculate(); await tick();
   w.openNewOrder();
   d.getElementById("noName").value = "Toko Resi";
+  d.getElementById("noPhone").value = "081234000";
+  d.getElementById("noAddr").value = "Jl. Mawar No. 1, Blitar";
   d.getElementById("noDP").value = "100000";
   const price = parseInt(d.getElementById("noPrice").value);
   await w.saveNewOrder(); await tick();
@@ -90,6 +92,45 @@ function boot({ width = 390, idb } = {}) {
   const payP = w.posAddPayment(); await tick(); await payP; await tick();
   w.posPrintResi();
   ok(resi.innerHTML.includes("r-lunas") && resi.textContent.includes("LUNAS"), "order lunas: blok LUNAS tampil di resi");
+  w.dispatchEvent(new w.Event("afterprint"));
+
+  // ===== Resi kirim: penerima (klien) + pengirim (identitas usaha), tanpa harga =====
+  console.log("\n== RESI KIRIM ==");
+  w.navGo("settings");
+  d.getElementById("bizName").value = "Dahlia Pack";
+  d.getElementById("bizPhone").value = "0812000111";
+  d.getElementById("bizAddr").value = "Jl. Melati 2, Blitar";
+  await w.bizSave(); await tick();
+  w.navGo("orders");
+  d.querySelector("#orderList .ocard").click();
+  await tick();
+  ok(d.getElementById("odBody").innerHTML.includes("posPrintResiKirim"), "tombol Resi kirim tampil di detail order");
+  const printedBefore = w.__printed;
+  await w.posPrintResiKirim();
+  ok(w.__printed === printedBefore + 1, "resi kirim tercetak langsung (alamat klien lengkap)");
+  ok(resi.textContent.includes("PENERIMA") && resi.textContent.includes("Toko Resi") && resi.textContent.includes("Jl. Mawar No. 1"), "resi kirim memuat penerima + alamat klien");
+  ok(resi.textContent.includes("PENGIRIM") && resi.textContent.includes("Dahlia Pack") && resi.textContent.includes("Jl. Melati 2"), "resi kirim memuat pengirim dari identitas usaha");
+  ok(!resi.textContent.includes("TOTAL") && !resi.textContent.includes(rpID(price)), "resi kirim tanpa info harga/pembayaran");
+  ok(resi.textContent.includes(orderNo), "resi kirim mencantumkan nomor order sebagai referensi");
+  w.dispatchEvent(new w.Event("afterprint"));
+
+  // Klien tanpa alamat -> konfirmasi dulu
+  w.navGo("form");
+  d.getElementById("qty").value = "1000";
+  w.calculate(); await tick();
+  w.openNewOrder();
+  d.getElementById("noClientSel").value = ""; w.onClientSelChange();
+  d.getElementById("noName").value = "Tanpa Alamat";
+  await w.saveNewOrder(); await tick();
+  const printed2 = w.__printed;
+  let pk = w.posPrintResiKirim();
+  await new Promise(r => setTimeout(r, 30));
+  d.getElementById("cfCancel").click(); await pk; await tick();
+  ok(w.__printed === printed2, "alamat kosong: batal di konfirmasi -> tidak mencetak");
+  pk = w.posPrintResiKirim();
+  await new Promise(r => setTimeout(r, 30));
+  d.getElementById("cfOk").click(); await pk; await tick();
+  ok(w.__printed === printed2 + 1 && resi.textContent.includes("Tanpa Alamat"), "alamat kosong: konfirmasi -> tetap cetak");
   w.dispatchEvent(new w.Event("afterprint"));
 
   // Persistensi lebar kertas

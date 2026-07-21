@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (100 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (108 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -67,6 +67,8 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   memakai AREA CETAK efektif (kertas 58 → 48 mm, kertas 80 → 72 mm; pilihan
   58/80 tersimpan di meta), font sans tebal (head thermal 1-bit — font tipis
   tercetak abu/putus), `body.print-resi` menyembunyikan sisa halaman saat print.
+  Dua jenis: **resi order** (pembayaran, utk order offline/di tempat) dan
+  **resi kirim** (hanya penerima=klien + pengirim=identitas usaha, TANPA harga).
 
 ## Aturan bisnis percetakan (jangan "diperbaiki")
 
@@ -101,4 +103,5 @@ v23 fitur komersial → v24 wizard → v25 berat kertas → v26 adaptif
 mobile/desktop → v27 POS (order, klien, stok, nota PDF ber-logo/watermark/ttd/
 stempel LUNAS) → v28 keuangan (pengeluaran kategori bebas + laporan omzet/
 profit bulanan-tahunan + piutang) → v29 resi thermal 58/80 mm (Blueprint USB
-via print dialog). Detail keputusan: `docs/KEPUTUSAN.md`.
+via print dialog) → v30 optimasi cetak (area cetak 48/72, font tebal) + resi
+kirim (penerima/pengirim tanpa harga). Detail keputusan: `docs/KEPUTUSAN.md`.

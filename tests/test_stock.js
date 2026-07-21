@@ -15,6 +15,10 @@ function boot(idb) {
       w.scrollTo = n; w.HTMLElement.prototype.scrollIntoView = n;
       w.URL.createObjectURL = b => { w.__blob = b; return "blob:t"; }; w.URL.revokeObjectURL = n;
       w.HTMLAnchorElement.prototype.click = function () { w.__dl = this.download; };
+      // jsdom belum punya Blob.text() -> polyfill lewat FileReader bawaan jsdom
+      if (!w.Blob.prototype.text) w.Blob.prototype.text = function () {
+        return new Promise((res, rej) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsText(this); });
+      };
     } }).window;
 }
 async function confirmDlg(w, yes = true) { await tick(); w.document.getElementById(yes ? "cfOk" : "cfCancel").click(); await tick(); }

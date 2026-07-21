@@ -472,9 +472,23 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 }
 @media (min-width: 980px) {
   body.wb #scrOrders, body.wb #scrOrderDetail, body.wb #scrClients,
-  body.wb #scrClientDetail, body.wb #scrNewOrder, body.wb #scrStock {
+  body.wb #scrClientDetail, body.wb #scrNewOrder, body.wb #scrStock,
+  body.wb #scrFinance {
     grid-column: 1 / -1; max-width: 680px; width: 100%; margin: 0 auto;
   }
+}
+/* v29: resi thermal 58/80 mm — hanya tampil saat print */
+#resiPrint { display: none; font: 10px/1.5 "Courier New", Courier, monospace; color: #000; background: #fff; width: 48mm; padding: 2mm 1mm 6mm; }
+#resiPrint.w80 { width: 72mm; }
+#resiPrint .r-c { text-align: center; }
+#resiPrint .r-b { font-weight: 700; }
+#resiPrint .r-big { font-size: 12px; font-weight: 700; }
+#resiPrint .r-hr { border-top: 1px dashed #000; margin: 4px 0; }
+#resiPrint .r-row { display: flex; justify-content: space-between; gap: 6px; }
+#resiPrint .r-lunas { border: 2px solid #000; text-align: center; font-weight: 700; font-size: 13px; padding: 3px 0; margin: 5px 0; letter-spacing: 2px; }
+@media print {
+  body.print-resi > :not(#resiPrint) { display: none !important; }
+  body.print-resi #resiPrint { display: block; }
 }
 </style>
 </head>
@@ -493,6 +507,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       <button data-nav="form" onclick="navGo('form')">Kalkulator</button>
       <button data-nav="clients" onclick="navGo('clients')">Klien</button>
       <button data-nav="stock" onclick="navGo('stock')">Stok</button>
+      <button data-nav="finance" onclick="navGo('finance')">Keuangan</button>
       <button data-nav="settings" onclick="navGo('settings')">Pengaturan</button>
     </nav>
   </header>
@@ -760,6 +775,36 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
     <div id="stockList"></div>
   </section>
 
+  <!-- ============ v28: LAYAR KEUANGAN ============ -->
+  <section class="screen" id="scrFinance" hidden>
+    <div class="pos-top"><h2>Keuangan</h2></div>
+    <div class="chiprow">
+      <button class="chip act" data-fin="laporan" onclick="finTab('laporan')">Laporan</button>
+      <button class="chip" data-fin="keluar" onclick="finTab('keluar')">Pengeluaran</button>
+    </div>
+    <div id="finLaporan">
+      <div class="grid">
+        <div class="form-group"><label>Bulan</label><select id="rptMonth" onchange="renderReport()"></select></div>
+        <div class="form-group"><label>Tahun</label><select id="rptYear" onchange="renderReport()"></select></div>
+      </div>
+      <div id="rptBody"></div>
+    </div>
+    <div id="finKeluar" hidden>
+      <div class="card">
+        <p class="card-title t-yel">Catat pengeluaran</p>
+        <div class="grid">
+          <div class="form-group"><label>Tanggal</label><input type="date" id="expDate"></div>
+          <div class="form-group"><label>Nominal (Rp)</label><input type="number" id="expAmt" placeholder="0"></div>
+        </div>
+        <div class="form-group"><label>Kategori / jenis</label><input type="text" id="expCat" list="expCatDl" placeholder="cth: listrik, gaji, servis mesin"><datalist id="expCatDl"></datalist></div>
+        <div class="form-group"><label>Catatan &mdash; opsional</label><input type="text" id="expNote" placeholder="cth: token listrik bengkel"></div>
+        <div class="opt-group"><label class="check-item"><input type="checkbox" id="expHpp"> Belanja bahan order (sudah terhitung HPP &mdash; tidak mengurangi profit lagi)</label></div>
+        <button class="btn-primary" onclick="expSave()">Simpan pengeluaran</button>
+      </div>
+      <div id="expList"></div>
+    </div>
+  </section>
+
   <section class="screen" id="scrNewOrder" hidden>
     <div class="pos-top"><div class="grp"><button class="wiz-back" onclick="navScreen('hasil')" aria-label="Kembali">&#8592;</button><h2>Order baru</h2></div></div>
     <div class="card">
@@ -789,6 +834,10 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
     </div>
   </section>
 </div>
+
+<!-- v29: konten resi thermal, dirakit saat cetak -->
+<div id="resiPrint"></div>
+<style id="resiPageStyle"></style>
 
 <div id="zoomOverlay" class="zoom-overlay" onclick="if(event.target===this)closeZoom()">
   <div class="zoom-head">
@@ -1650,7 +1699,7 @@ try {
     form: "scrForm", hasil: "scrHasil", settings: "scrSettings",
     orders: "scrOrders", odetail: "scrOrderDetail",
     clients: "scrClients", cdetail: "scrClientDetail", norder: "scrNewOrder",
-    stock: "scrStock"
+    stock: "scrStock", finance: "scrFinance"
   };
   let current = "form", beforeSettings = "form";
   const mq = (window.matchMedia && window.matchMedia("(min-width: 980px)")) || { matches: false };
@@ -1765,16 +1814,17 @@ try {
 
 // ---- IndexedDB helpers ----
 let db = null;
-const POS = { orders: [], clients: [], meta: {}, stock: [] };
+const POS = { orders: [], clients: [], meta: {}, stock: [], expenses: [] };
 function idbOpen() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open("printcalc_pos", 2);
+    const r = indexedDB.open("printcalc_pos", 3);
     r.onupgradeneeded = e => {
       const d = e.target.result;
       if (!d.objectStoreNames.contains("orders"))  d.createObjectStore("orders",  { keyPath: "id", autoIncrement: true });
       if (!d.objectStoreNames.contains("clients")) d.createObjectStore("clients", { keyPath: "id", autoIncrement: true });
       if (!d.objectStoreNames.contains("meta"))    d.createObjectStore("meta",    { keyPath: "key" });
       if (!d.objectStoreNames.contains("stock"))   d.createObjectStore("stock",   { keyPath: "name" });
+      if (!d.objectStoreNames.contains("expenses")) d.createObjectStore("expenses", { keyPath: "id", autoIncrement: true });
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -1837,9 +1887,10 @@ window.navGo = function (name) {
   if (name === "orders") renderOrders();
   if (name === "clients") renderClients();
   if (name === "stock") renderStock();
+  if (name === "finance") renderFinance();
   navScreen(name);
 };
-const NAV_MAP = { form: "form", hasil: "form", settings: "settings", orders: "orders", odetail: "orders", clients: "clients", cdetail: "clients", norder: "orders", stock: "stock" };
+const NAV_MAP = { form: "form", hasil: "form", settings: "settings", orders: "orders", odetail: "orders", clients: "clients", cdetail: "clients", norder: "orders", stock: "stock", finance: "finance" };
 window.onScreenChange = function (name) {
   const grp = NAV_MAP[name] || "";
   document.querySelectorAll("#mainNav button").forEach(b => b.classList.toggle("act", b.dataset.nav === grp));
@@ -1928,6 +1979,13 @@ window.posOpenOrder = function (id) {
     <div class="card">
       <button class="btn-ghost" onclick="posShareNota()">Kirim nota<small>WA / salin teks</small></button>
       <button class="btn-ghost" onclick="posShareNotaPdf()">Nota PDF<small>file untuk klien</small></button>
+      <div class="pay-add">
+        <div class="form-group" style="margin:0;flex:1"><select id="odResiW" onchange="thermalSetWidth(this.value)">
+          <option value="58"${thermalWidth() === 58 ? " selected" : ""}>Kertas 58 mm</option>
+          <option value="80"${thermalWidth() === 80 ? " selected" : ""}>Kertas 80 mm</option>
+        </select></div>
+        <button class="btn-ghost" onclick="posPrintResi()">Cetak resi</button>
+      </div>
       <button class="btn-ghost" onclick="posRepeat(${o.id})">Repeat order<small>hitung ulang harga sekarang</small></button>
       <button class="btn-ghost btn-danger" onclick="posDelOrder()">Hapus order</button>
     </div>`;
@@ -2245,6 +2303,192 @@ window.stockSetUnit = async function (name, val) {
 };
 
 
+// ---- keuangan v28: pengeluaran + laporan ----
+const MONTH_LBL = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+let finPane = "laporan";
+const todayIso = () => { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
+const expYm = e => [parseInt(e.date.slice(0, 4)), parseInt(e.date.slice(5, 7)) - 1];
+const rpS = n => (n < 0 ? "-" : "") + rp(Math.abs(n));
+
+window.finTab = function (pane) {
+  finPane = pane;
+  byId("finLaporan").hidden = pane !== "laporan";
+  byId("finKeluar").hidden = pane !== "keluar";
+  document.querySelectorAll("#scrFinance .chip").forEach(b => b.classList.toggle("act", b.dataset.fin === pane));
+  if (pane === "laporan") renderReport(); else renderExpenses();
+};
+
+function renderFinance() {
+  const now = new Date();
+  const years = new Set([now.getFullYear()]);
+  POS.orders.forEach(o => years.add(new Date(o.createdAt).getFullYear()));
+  POS.expenses.forEach(e => years.add(expYm(e)[0]));
+  const ySel = byId("rptYear"), keep = parseInt(ySel.value);
+  ySel.innerHTML = [...years].sort((a, b) => b - a).map(y => `<option value="${y}">${y}</option>`).join("");
+  ySel.value = String(years.has(keep) ? keep : now.getFullYear());
+  const mSel = byId("rptMonth");
+  if (!mSel.options.length) {
+    mSel.innerHTML = `<option value="all">Setahun penuh</option>` + MONTH_LBL.map((n, i) => `<option value="${i}">${n}</option>`).join("");
+    mSel.value = String(now.getMonth());
+  }
+  if (!byId("expDate").value) byId("expDate").value = todayIso();
+  finTab(finPane);
+}
+
+// Agregat satu periode; month = -1 berarti setahun penuh.
+// Omzet & HPP mengikuti tanggal order dibuat (basis order); kas masuk mengikuti tanggal bayar (basis kas).
+function periodAgg(year, month) {
+  const inP = (y, m) => y === year && (month < 0 || m === month);
+  const a = { cnt: 0, omzet: 0, hpp: 0, kas: 0, expOper: 0, expBahan: 0 };
+  POS.orders.forEach(o => {
+    const d = new Date(o.createdAt);
+    if (inP(d.getFullYear(), d.getMonth())) { a.cnt++; a.omzet += o.price || 0; a.hpp += (o.calc && o.calc.hppTotal) || 0; }
+    (o.payments || []).forEach(p => { const t = new Date(p.ts); if (inP(t.getFullYear(), t.getMonth())) a.kas += p.amt || 0; });
+  });
+  POS.expenses.forEach(e => {
+    const [y, m] = expYm(e);
+    if (inP(y, m)) { if (e.hpp) a.expBahan += e.amt || 0; else a.expOper += e.amt || 0; }
+  });
+  a.profit = a.omzet - a.hpp - a.expOper;
+  return a;
+}
+
+window.renderReport = function () {
+  const year = parseInt(byId("rptYear").value);
+  const mv = byId("rptMonth").value;
+  const month = mv === "all" ? -1 : parseInt(mv);
+  const a = periodAgg(year, month);
+  const label = month < 0 ? "tahun " + year : MONTH_LBL[month] + " " + year;
+  let piutang = 0, piutangCnt = 0;
+  POS.orders.forEach(o => { const s = (o.price || 0) - paidSum(o); if (s > 0) { piutang += s; piutangCnt++; } });
+  let html = `
+    <div class="card">
+      <p class="card-title">Ringkasan ${label}</p>
+      <div class="row"><span class="lbl">Order masuk</span><span class="dots"></span><strong class="val">${a.cnt} order</strong></div>
+      <div class="row"><span class="lbl">Nilai order (omzet)</span><span class="dots"></span><strong class="val" id="rptOmzet">${rp(a.omzet)}</strong></div>
+      <div class="row"><span class="lbl">Kas masuk (pembayaran)</span><span class="dots"></span><strong class="val" id="rptKas">${rp(a.kas)}</strong></div>
+      <div class="row"><span class="lbl">HPP order</span><span class="dots"></span><strong class="val" id="rptHpp">${rp(a.hpp)}</strong></div>
+      <div class="row"><span class="lbl">Pengeluaran operasional</span><span class="dots"></span><strong class="val" id="rptExp">${rp(a.expOper)}</strong></div>
+      ${a.expBahan > 0 ? `<div class="row" style="font-size:12px"><span class="lbl">Belanja bahan (sudah dalam HPP)</span><span class="dots"></span><span class="val" id="rptBahan">${rp(a.expBahan)}</span></div>` : ""}
+      <div class="total-row" style="margin-top:10px"><span class="lbl"><b>Profit bersih</b></span><span class="price-tag" id="rptProfit" style="color:${a.profit >= 0 ? "var(--green)" : "var(--danger)"}">${rpS(a.profit)}</span></div>
+      <p class="set-hint" style="margin:8px 0 0">Profit bersih = nilai order &minus; HPP &minus; pengeluaran operasional. Belanja bahan bertanda &quot;sudah terhitung HPP&quot; tidak dikurangkan lagi.</p>
+    </div>
+    <div class="card">
+      <p class="card-title t-mag">Piutang berjalan</p>
+      <div class="row"><span class="lbl">${piutangCnt} order belum lunas</span><span class="dots"></span><strong class="val" id="rptPiutang" style="color:${piutang > 0 ? "var(--danger)" : "var(--green)"}">${rp(piutang)}</strong></div>
+      <p class="set-hint" style="margin:8px 0 0">Dihitung dari semua order, tidak mengikuti pilihan periode.</p>
+    </div>`;
+  if (month < 0) {
+    const rows = MONTH_LBL.map((n, i) => {
+      const m = periodAgg(year, i);
+      if (!m.cnt && !m.kas && !m.expOper && !m.expBahan) return "";
+      return `<div class="row"><span class="lbl">${n} &middot; omzet ${rp(m.omzet)}</span><span class="dots"></span><strong class="val" style="color:${m.profit >= 0 ? "var(--green)" : "var(--danger)"}">${rpS(m.profit)}</strong></div>`;
+    }).join("");
+    html += `<div class="card"><p class="card-title t-yel">Profit per bulan ${year}</p>${rows || `<div class="pos-empty">Belum ada aktivitas di tahun ini.</div>`}</div>`;
+  }
+  byId("rptBody").innerHTML = html;
+};
+
+window.renderExpenses = function () {
+  const cats = [...new Set(POS.expenses.map(e => e.cat).filter(Boolean))].sort((a, b) => a.localeCompare(b, "id"));
+  byId("expCatDl").innerHTML = cats.map(c => `<option value="${esc(c)}"></option>`).join("");
+  const rows = [...POS.expenses].sort((a, b) => b.date.localeCompare(a.date) || (b.ts || 0) - (a.ts || 0));
+  let lastYm = "";
+  byId("expList").innerHTML = rows.length ? rows.map(e => {
+    const [y, m] = expYm(e);
+    const ym = y + "-" + m;
+    let head = "";
+    if (ym !== lastYm) {
+      lastYm = ym;
+      const ag = periodAgg(y, m);
+      head = `<p class="card-title" style="margin:18px 0 10px">${MONTH_LBL[m]} ${y} &middot; keluar ${rp(ag.expOper + ag.expBahan)}</p>`;
+    }
+    return head + `<div class="ocard">
+      <div class="ocard-top"><b>${esc(e.cat)}</b><b>${rp(e.amt)}</b></div>
+      <div class="ocard-sub">${fmtDate(e.date)}${e.note ? " · " + esc(e.note) : ""}${e.hpp ? ' · <span class="badge pay-dp">sudah dalam HPP</span>' : ""}</div>
+      <div class="ocard-bot"><button class="btn-ghost btn-danger" style="margin:6px 0 0;padding:6px 14px;font-size:12px" onclick="expDel(${e.id})">Hapus</button></div>
+    </div>`;
+  }).join("") : `<div class="pos-empty">Belum ada pengeluaran tercatat.<br>Catat semua uang keluar di sini &mdash; listrik, gaji, servis, sampai pengeluaran dadakan.</div>`;
+};
+
+window.expSave = async function () {
+  if (!dbGuard()) return;
+  const date = byId("expDate").value || todayIso();
+  const cat = byId("expCat").value.trim();
+  const amt = parseInt(byId("expAmt").value);
+  if (!cat) { showToast("⚠️ Isi kategori / jenis pengeluaran", "err"); return; }
+  if (!amt || amt <= 0) { showToast("⚠️ Isi nominal pengeluaran", "err"); return; }
+  const e = { date, cat, amt, note: byId("expNote").value.trim(), hpp: byId("expHpp").checked, ts: Date.now() };
+  e.id = await idbPut("expenses", e);
+  POS.expenses.push(e);
+  byId("expAmt").value = ""; byId("expCat").value = ""; byId("expNote").value = ""; byId("expHpp").checked = false;
+  showToast("✔️ Pengeluaran dicatat");
+  renderExpenses();
+};
+
+window.expDel = async function (id) {
+  const e = POS.expenses.find(x => x.id === id);
+  if (!e || !dbGuard()) return;
+  const ok = await askConfirm(`Hapus pengeluaran ${e.cat} ${rp(e.amt)} (${fmtDate(e.date)})?`, "Hapus");
+  if (!ok) return;
+  await idbDel("expenses", id);
+  POS.expenses = POS.expenses.filter(x => x.id !== id);
+  showToast("🗑️ Pengeluaran dihapus");
+  renderExpenses();
+};
+
+// ---- resi thermal v29 (Blueprint USB via dialog print browser, bukan ESC/POS) ----
+const thermalWidth = () => (POS.meta.thermal && POS.meta.thermal.width) === 80 ? 80 : 58;
+window.thermalSetWidth = async function (val) {
+  if (!dbGuard()) return;
+  POS.meta.thermal = { width: parseInt(val) === 80 ? 80 : 58 };
+  await idbPut("meta", { key: "thermal", val: POS.meta.thermal });
+};
+function resiHtml(o) {
+  const c = clientOf(o);
+  const b = POS.meta.biz || {};
+  const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
+  const lunas = o.price > 0 && paid >= o.price;
+  const tgl = ts => new Date(ts).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  const row = (l, v, cls) => `<div class="r-row${cls ? " " + cls : ""}"><span>${l}</span><span>${v}</span></div>`;
+  return `
+    ${b.name ? `<div class="r-c r-big">${esc(b.name)}</div>` : ""}
+    ${b.address ? `<div class="r-c">${esc(b.address)}</div>` : ""}
+    ${b.phone ? `<div class="r-c">Telp/WA ${esc(b.phone)}</div>` : ""}
+    <div class="r-hr"></div>
+    <div class="r-b">${esc(o.no)}</div>
+    <div>${tgl(o.createdAt)} &middot; ${STATUS_LBL[o.status]}</div>
+    <div>Klien: ${esc(c ? c.name : "-")}</div>
+    <div class="r-hr"></div>
+    <div>Cetak ${o.calc.pW}x${o.calc.pH} cm, ${o.calc.colorCount} warna</div>
+    <div>Bahan: ${esc(String(o.calc.paper).split(" (")[0])}</div>
+    <div>Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs</div>
+    ${o.deadline ? `<div>Estimasi selesai: ${fmtDate(o.deadline)}</div>` : ""}
+    <div class="r-hr"></div>
+    ${row("TOTAL", rp(o.price), "r-b")}
+    ${(o.payments || []).map(p => row("Bayar " + tgl(p.ts), rp(p.amt))).join("")}
+    ${row("Dibayar", rp(paid))}
+    ${row("SISA", sisa > 0 ? rp(sisa) : "Rp 0", "r-b")}
+    ${lunas ? `<div class="r-lunas">LUNAS</div>` : ""}
+    <div class="r-hr"></div>
+    <div class="r-c">Terima kasih</div>
+    <div class="r-c">Dicetak ${tgl(Date.now())}</div>`;
+}
+window.posPrintResi = function () {
+  const o = POS.orders.find(x => x.id === curOrderId);
+  if (!o) return;
+  const wmm = thermalWidth();
+  const el = byId("resiPrint");
+  el.className = wmm === 80 ? "w80" : "";
+  el.innerHTML = resiHtml(o);
+  byId("resiPageStyle").textContent = `@page { size: ${wmm}mm auto; margin: 0; }`;
+  document.body.classList.add("print-resi");
+  const done = () => { document.body.classList.remove("print-resi"); window.removeEventListener("afterprint", done); };
+  window.addEventListener("afterprint", done);
+  window.print();
+  setTimeout(done, 2000); // jaga-jaga bila afterprint tidak terpicu (print dialog mobile)
+};
+
 // ---- identitas usaha + logo ----
 function bizLoadForm() {
   const b = POS.meta.biz || {};
@@ -2556,10 +2800,10 @@ async function markBackup() {
 }
 window.exportData = async function () {
   const payload = {
-    app: "printcalc", ver: 27, exportedAt: new Date().toISOString(),
+    app: "printcalc", ver: 28, exportedAt: new Date().toISOString(),
     settings: localStorage.getItem(STORAGE_KEY) || JSON.stringify(SET),
     lastsel: localStorage.getItem("printcalc_lastsel") || null,
-    clients: POS.clients, orders: POS.orders, stock: POS.stock,
+    clients: POS.clients, orders: POS.orders, stock: POS.stock, expenses: POS.expenses,
     meta: Object.entries(POS.meta).map(([key, val]) => ({ key, val }))
   };
   const name = "printcalc-backup-" + new Date().toISOString().slice(0, 10) + ".json";
@@ -2585,11 +2829,12 @@ window.importData = async function (file) {
   if (!data || data.app !== "printcalc") { showToast("⚠️ Bukan file backup PrintCalc", "err"); return; }
   const ok = await askConfirm(`Import akan MENGGANTI seluruh data (${(data.orders || []).length} order, ${(data.clients || []).length} klien) dan pengaturan di perangkat ini. Lanjutkan?`, "Import");
   if (!ok) return;
-  await idbClear("orders"); await idbClear("clients"); await idbClear("meta"); await idbClear("stock");
+  await idbClear("orders"); await idbClear("clients"); await idbClear("meta"); await idbClear("stock"); await idbClear("expenses");
   for (const c of (data.clients || [])) await idbPut("clients", c);
   for (const o of (data.orders || [])) await idbPut("orders", o);
   for (const m of (data.meta || [])) await idbPut("meta", m);
   for (const st of (data.stock || [])) await idbPut("stock", st);
+  for (const e of (data.expenses || [])) await idbPut("expenses", e);
   if (data.settings) localStorage.setItem(STORAGE_KEY, data.settings);
   if (data.lastsel) localStorage.setItem("printcalc_lastsel", data.lastsel);
   showToast("✔️ Data berhasil di-import — memuat ulang…");
@@ -2610,6 +2855,7 @@ function maybeBackupNudge() {
     POS.orders = await idbAll("orders");
     POS.clients = await idbAll("clients");
     POS.stock = await idbAll("stock");
+    POS.expenses = await idbAll("expenses");
     (await idbAll("meta")).forEach(m => { if (m.val !== null && m.val !== undefined) POS.meta[m.key] = m.val; });
   } catch (e) {
     db = null;

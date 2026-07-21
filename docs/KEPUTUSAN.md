@@ -60,6 +60,9 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   dan form identitas usaha yang sudah ada, tidak ada form baru.
 - Resi kirim tanpa alamat klien: minta konfirmasi dulu (alamat bisa ditulis
   tangan), bukan ditolak.
+- Resi kirim — PENGIRIM cukup nama/perusahaan + telepon, TANPA alamat
+  (alamat pengirim tak diperlukan kurir; keputusan v31). Penerima tetap
+  lengkap dengan alamat.
 
 ## Kertas dari klien & order partner (v31)
 - **Kertas dari klien** (jasa cetak saja): centang di form kalkulator;
@@ -79,6 +82,9 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   order (baris "Modal partner" + profit) dan laporan.
 - Order partner ikut nomor ORD normal, status, pembayaran, nota, resi,
   repeat (prefill form partner + banner harga lama), badge "Partner".
+- Order partner TETAP bisa kirim penawaran ke klien seperti order biasa
+  (klien berhak tahu detail ordernya) — isi: deskripsi + harga jual, TANPA
+  modal partner dan TANPA identitas usaha (konsisten keputusan v25).
 
 ## Nota & identitas
 - Kirim HPP ke front office DIHAPUS (front office pakai POS).

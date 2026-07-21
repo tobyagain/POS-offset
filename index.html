@@ -873,6 +873,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="poDP" placeholder="0"></div>
       </div>
       <p class="set-hint" id="poProfit" style="margin:0 0 10px"></p>
+      <button class="btn-ghost" onclick="poSharePenawaran()">Kirim penawaran<small>untuk klien &middot; tanpa modal partner</small></button>
       <button class="btn-primary" onclick="savePartnerOrder()">Simpan order</button>
     </div>
   </section>
@@ -2326,6 +2327,19 @@ window.openPartnerOrder = function (pre) {
   onPoClientChange();
   navScreen("partner");
 };
+// Penawaran order partner: format sama dgn penawaran biasa — tanpa identitas
+// usaha (keputusan v25) dan TANPA modal partner.
+window.poSharePenawaran = function () {
+  const desc = byId("poDesc").value.trim();
+  const price = parseInt(byId("poPrice").value) || 0;
+  const qty = parseInt(byId("poQty").value) || 0;
+  if (!desc || price <= 0) { showToast("⚠️ Isi deskripsi pekerjaan & harga jual dulu", "err"); return; }
+  shareText(`🧾 *PENAWARAN HARGA*
+━━━━━━━━━━━━━━
+Item: ${desc}${qty ? `\nJumlah: ${qty.toLocaleString("id-ID")} pcs` : ""}
+━━━━━━━━━━━━━━
+*Total: ${rp(price)}*${qty ? `\nHarga satuan: ${rp(price / qty)}/pcs` : ""}`);
+};
 window.onPoClientChange = function () {
   const sel = byId("poClientSel");
   const c = POS.clients.find(x => String(x.id) === sel.value);
@@ -2684,7 +2698,6 @@ function resiKirimHtml(o) {
     <div>PENGIRIM</div>
     ${b.name ? `<div class="r-b">${esc(b.name)}</div>` : ""}
     ${b.phone ? `<div>${esc(b.phone)}</div>` : ""}
-    ${b.address ? `<div>${esc(b.address)}</div>` : ""}
     <div class="r-hr"></div>
     <div class="r-row"><span>${esc(o.no)}</span><span>${tgl}</span></div>`;
 }

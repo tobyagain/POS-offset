@@ -38,6 +38,8 @@ function boot({ width = 390, idb } = {}) {
       w.scrollTo = noop;
       w.HTMLElement.prototype.scrollIntoView = noop;
       w.print = () => { w.__printed = (w.__printed || 0) + 1; };
+      // tangkap teks penawaran yang dibagikan (shareText -> clipboard)
+      w.navigator.clipboard = { writeText: t => { w.__shared = t; return Promise.resolve(); } };
     }
   });
   return dom.window;
@@ -99,6 +101,14 @@ const vis = (w, id) => !w.document.getElementById(id).hidden;
   ok(parseInt(d.getElementById("poPrice").value) === 600000, "markup 20% otomatis: modal 500rb -> jual 600rb");
   // poProfit ditulis via innerText (expando di jsdom) — baca lewat innerText
   ok(String(d.getElementById("poProfit").innerText).includes("100.000"), "info profit 100rb tampil");
+
+  // Penawaran ke klien: deskripsi + harga jual, TANPA modal partner & TANPA identitas usaha
+  w.__shared = "";
+  w.poSharePenawaran();
+  ok(w.__shared.includes("PENAWARAN") && w.__shared.includes("Nota NCR 2 ply") && w.__shared.includes("600.000"), "penawaran partner memuat deskripsi + harga jual");
+  ok(!w.__shared.includes("500.000"), "penawaran partner TIDAK membocorkan modal partner");
+  ok(!w.__shared.includes("Dahlia Pack"), "penawaran partner tanpa identitas usaha (keputusan v25)");
+
   d.getElementById("poDP").value = "200000";
   await w.savePartnerOrder(); await tick();
   ok(vis(w, "scrOrderDetail") && d.getElementById("odBody").textContent.includes("Nota NCR 2 ply"), "order partner tersimpan, detail memuat deskripsi");

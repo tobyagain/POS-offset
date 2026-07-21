@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (132 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (136 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -55,7 +55,8 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   Order "kertas dari klien" dan order partner TIDAK menyentuh stok.
 - **Order partner** (`o.calc.partner`): tanpa kalkulator; modal partner
   tersimpan sebagai `calc.hppTotal` (laporan profit otomatis benar) dan
-  TIDAK BOLEH tampil di nota/resi klien — hanya di detail order & laporan.
+  TIDAK BOLEH tampil di nota/resi/penawaran klien — hanya di detail order &
+  laporan. Tetap bisa kirim penawaran ke klien (deskripsi + harga jual).
 - **Nomor order** `ORD-YYMM-XXX` dari counter meta — jangan hitung dari daftar order.
 - **Nota PDF** dirakit manual level byte (tanpa library): teks ASCII-only lewat
   `pdfSan()`, offset xref = panjang byte, JPEG via DCTDecode, watermark logo
@@ -74,7 +75,8 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   58/80 tersimpan di meta), font sans tebal (head thermal 1-bit — font tipis
   tercetak abu/putus), `body.print-resi` menyembunyikan sisa halaman saat print.
   Dua jenis: **resi order** (pembayaran, utk order offline/di tempat) dan
-  **resi kirim** (hanya penerima=klien + pengirim=identitas usaha, TANPA harga).
+  **resi kirim** (penerima=klien lengkap + pengirim=nama & telp usaha saja
+  tanpa alamat, TANPA harga).
 
 ## Aturan bisnis percetakan (jangan "diperbaiki")
 

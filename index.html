@@ -473,7 +473,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 @media (min-width: 980px) {
   body.wb #scrOrders, body.wb #scrOrderDetail, body.wb #scrClients,
   body.wb #scrClientDetail, body.wb #scrNewOrder, body.wb #scrStock,
-  body.wb #scrFinance {
+  body.wb #scrFinance, body.wb #scrPartnerOrder {
     grid-column: 1 / -1; max-width: 680px; width: 100%; margin: 0 auto;
   }
 }
@@ -535,6 +535,10 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
           <label>Material plano</label>
           <select id="paperType"></select>
         </div>
+        <div class="opt-group" style="margin-bottom:0">
+          <label class="check-item"><input type="checkbox" id="paperByClient" onchange="if(typeof updateData==='function')updateData()"> Kertas disediakan klien (jasa cetak saja)</label>
+          <div class="hint">Harga kertas tidak ditagih &mdash; hanya ongkos cetak &amp; potong. Layout tetap dihitung supaya tahu berapa plano yang harus disiapkan klien. Stok tidak berkurang.</div>
+        </div>
       </div>
     </div>
 
@@ -589,6 +593,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
     </div>
 
     <div class="oldprice" id="repeatBanner" hidden></div>
+    <div class="oldprice" id="pbcNote" hidden></div>
 
     <div class="card" id="resPlaceholder">Hasil layout &amp; penawaran akan tampil di sini setelah kalkulasi.</div>
 
@@ -747,7 +752,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 
   <!-- ============ v27: LAYAR POS ============ -->
   <section class="screen" id="scrOrders" hidden>
-    <div class="pos-top"><h2>Daftar order</h2><button class="btn-edit" onclick="navGo('form')">+ Order baru</button></div>
+    <div class="pos-top"><h2>Daftar order</h2><div style="display:flex;gap:8px"><button class="btn-edit" onclick="openPartnerOrder()">+ Order partner</button><button class="btn-edit" onclick="navGo('form')">+ Order baru</button></div></div>
     <div class="chiprow">
       <button class="chip act" data-f="aktif" onclick="setOrderFilter('aktif')">Aktif</button>
       <button class="chip" data-f="riwayat" onclick="setOrderFilter('riwayat')">Riwayat</button>
@@ -834,6 +839,41 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="noDP" placeholder="0"></div>
       </div>
       <button class="btn-primary" onclick="saveNewOrder()">Simpan order</button>
+    </div>
+  </section>
+
+  <!-- ============ v31: ORDER PARTNER (makloon) ============ -->
+  <section class="screen" id="scrPartnerOrder" hidden>
+    <div class="pos-top"><div class="grp"><button class="wiz-back" onclick="navGo('orders')" aria-label="Kembali">&#8592;</button><h2>Order partner</h2></div></div>
+    <p class="set-hint" style="margin:0 0 14px">Order yang dilempar ke partner: partner memberi harga jadi, tinggal markup untuk ambil profit. Modal partner tercatat sebagai HPP order dan TIDAK pernah tampil di nota/resi klien.</p>
+    <div class="oldprice" id="poOldPrice" hidden style="margin-bottom:14px"></div>
+    <div class="card">
+      <p class="card-title t-mag">Data klien</p>
+      <div class="form-group"><label>Klien</label><select id="poClientSel" onchange="onPoClientChange()"></select></div>
+      <div class="form-group"><label>Nama</label><input type="text" id="poName" placeholder="Nama klien / instansi"></div>
+      <div class="grid">
+        <div class="form-group"><label>Telepon</label><input type="text" id="poPhone" inputmode="tel" placeholder="08xx"></div>
+        <div class="form-group"><label>Deadline</label><input type="date" id="poDeadline"></div>
+      </div>
+      <div class="form-group"><label>Alamat &mdash; opsional</label><input type="text" id="poAddr" placeholder="Alamat"></div>
+    </div>
+    <div class="card">
+      <p class="card-title t-yel">Pekerjaan &amp; harga</p>
+      <div class="form-group"><label>Deskripsi pekerjaan</label><input type="text" id="poDesc" placeholder="cth: Nota NCR 2 ply 10&times;16, 100 buku"></div>
+      <div class="grid">
+        <div class="form-group"><label>Jumlah (pcs) &mdash; opsional</label><input type="number" id="poQty"></div>
+        <div class="form-group"><label>Nama partner &mdash; opsional</label><input type="text" id="poPartner" placeholder="cth: Percetakan X"></div>
+      </div>
+      <div class="grid">
+        <div class="form-group"><label>Modal dari partner (Rp)</label><input type="number" id="poCost" oninput="poRecalc()"></div>
+        <div class="form-group"><label>Markup (%)</label><input type="number" id="poMarkup" value="20" oninput="poRecalc()"></div>
+      </div>
+      <div class="grid">
+        <div class="form-group"><label>Harga jual ke klien (Rp)</label><input type="number" id="poPrice" oninput="poInfo()"></div>
+        <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="poDP" placeholder="0"></div>
+      </div>
+      <p class="set-hint" id="poProfit" style="margin:0 0 10px"></p>
+      <button class="btn-primary" onclick="savePartnerOrder()">Simpan order</button>
     </div>
   </section>
 </div>
@@ -1098,7 +1138,7 @@ function shareProduksi() {
 `🖨️ *SPK PRODUKSI*
 ━━━━━━━━━━━━━━
 Mesin: ${c.mName}
-Kertas: ${c.paper}
+Kertas: ${c.paper}${c.paperByClient ? " — DARI KLIEN" : ""}
 Ukuran potong: ${c.pW} × ${c.pH} cm (${c.orient})
 Warna: ${c.colorCount}
 Gripper: ${c.gripper}
@@ -1121,19 +1161,23 @@ function shareClient() {
 `🧾 *PENAWARAN HARGA*
 ━━━━━━━━━━━━━━
 Item: Cetak ${c.pW} × ${c.pH} cm, ${c.colorCount} warna
-Bahan: ${c.paper.split(" (")[0]}
+Bahan: ${c.paper.split(" (")[0]}${c.paperByClient ? " (disediakan klien)" : ""}
 Jumlah: ${c.qty.toLocaleString("id-ID")} pcs
 ━━━━━━━━━━━━━━
 *Total: ${rp(c.totalOffer)}*
 Harga satuan: ${rp(c.totalOffer / c.qty)}/pcs
 
-Harga sudah termasuk bahan, cetak & potong.`);
+${c.paperByClient
+  ? `Harga termasuk cetak & potong. Kertas disediakan klien: ${c.totalPlano.toLocaleString("id-ID")} plano ${c.paper.split(" (")[0]}.`
+  : "Harga sudah termasuk bahan, cetak & potong."}`);
 }
 
 
 function updateData() {
   const p = SET.papers[parseInt(document.getElementById("paperType").value)] || SET.papers[0];
   planoW = p.w; planoH = p.h; priceP = p.price;
+  // v31: kertas disediakan klien -> harga kertas 0, layout tetap pakai ukuran plano
+  if (document.getElementById("paperByClient").checked) priceP = 0;
   const m = SET.machines[parseInt(document.getElementById("machineType").value)] || SET.machines[0];
   machineEffW = m.effW; machineEffH = m.effH; baseCost = m.baseCost; overCost = m.overCost;
 }
@@ -1319,6 +1363,7 @@ function doCalculate(pW, pH, qty, scenarios, gOn) {
   const pSel = SET.papers[parseInt(document.getElementById("paperType").value)] || SET.papers[0];
   lastCalc = {
     mName, paper: `${pSel.name} (${pSel.w}×${pSel.h})`,
+    paperByClient: document.getElementById("paperByClient").checked,
     pW, pH, qty, colorCount,
     gripper: gOn ? `AKTIF ${SET.gripper} cm (${best.gOnLongSide ? "sisi panjang" : "sisi pendek"})` : "MATI",
     orient: (best.pW === pW) ? "tegak" : "diputar 90°",
@@ -1373,7 +1418,11 @@ function doCalculate(pW, pH, qty, scenarios, gOn) {
 
   document.getElementById("notaOrder").innerText =
     `Cetak ${pW} × ${pH} cm · ${colorCount} warna · ${qty.toLocaleString("id-ID")} pcs`;
-  document.getElementById("fPaper").innerText = "Rp " + q.costPaper.toLocaleString();
+  const pbcNote = document.getElementById("pbcNote");
+  pbcNote.hidden = !lastCalc.paperByClient;
+  if (lastCalc.paperByClient) pbcNote.innerHTML =
+    `Kertas disediakan klien — klien perlu menyiapkan <b>${q.totalPlano.toLocaleString("id-ID")} plano</b> ${esc(pSel.name)} (${pSel.w}×${pSel.h}). Harga di bawah TANPA bahan.`;
+  document.getElementById("fPaper").innerText = lastCalc.paperByClient ? "Rp 0 (dari klien)" : "Rp " + q.costPaper.toLocaleString();
   document.getElementById("fDruk").innerText = "Rp " + q.costDruk.toLocaleString();
   document.getElementById("txtMachineInfo").innerText = (SET.machines[parseInt(document.getElementById("machineType").value)] || SET.machines[0]).name + (q.extraDruk > 0 ? ` + ${q.extraDruk}rb over` : "");
   document.getElementById("fCut").innerText = "Rp " + SET.cutCost.toLocaleString();
@@ -1702,7 +1751,7 @@ try {
     form: "scrForm", hasil: "scrHasil", settings: "scrSettings",
     orders: "scrOrders", odetail: "scrOrderDetail",
     clients: "scrClients", cdetail: "scrClientDetail", norder: "scrNewOrder",
-    stock: "scrStock", finance: "scrFinance"
+    stock: "scrStock", finance: "scrFinance", partner: "scrPartnerOrder"
   };
   let current = "form", beforeSettings = "form";
   const mq = (window.matchMedia && window.matchMedia("(min-width: 980px)")) || { matches: false };
@@ -1865,8 +1914,9 @@ function isLate(o) {
   return new Date(o.deadline + "T00:00:00") < t;
 }
 function jobSummary(c) {
+  if (c.partner) return `${c.desc}${c.qty ? " · " + Number(c.qty).toLocaleString("id-ID") + " pcs" : ""} · via partner`;
   const bahan = String(c.paper || "").split(" (")[0];
-  return `${bahan} · ${c.pW}×${c.pH} cm · ${Number(c.qty).toLocaleString("id-ID")} pcs · ${c.colorCount} warna`;
+  return `${bahan}${c.paperByClient ? " (kertas klien)" : ""} · ${c.pW}×${c.pH} cm · ${Number(c.qty).toLocaleString("id-ID")} pcs · ${c.colorCount} warna`;
 }
 async function nextOrderNo() {
   const now = new Date();
@@ -1893,7 +1943,7 @@ window.navGo = function (name) {
   if (name === "finance") renderFinance();
   navScreen(name);
 };
-const NAV_MAP = { form: "form", hasil: "form", settings: "settings", orders: "orders", odetail: "orders", clients: "clients", cdetail: "clients", norder: "orders", stock: "stock", finance: "finance" };
+const NAV_MAP = { form: "form", hasil: "form", settings: "settings", orders: "orders", odetail: "orders", clients: "clients", cdetail: "clients", norder: "orders", stock: "stock", finance: "finance", partner: "orders" };
 window.onScreenChange = function (name) {
   const grp = NAV_MAP[name] || "";
   document.querySelectorAll("#mainNav button").forEach(b => b.classList.toggle("act", b.dataset.nav === grp));
@@ -1924,7 +1974,7 @@ function renderOrders() {
   list.innerHTML = rows.map(o => {
     const [pl, pc] = payBadge(o);
     return `<div class="ocard" onclick="posOpenOrder(${o.id})">
-      <div class="ocard-top"><b>${esc(o.no)}</b><span class="badge st-${o.status}">${STATUS_LBL[o.status]}</span></div>
+      <div class="ocard-top"><b>${esc(o.no)}</b><span style="display:flex;gap:5px">${o.calc.partner ? '<span class="badge pay-dp">Partner</span>' : ""}<span class="badge st-${o.status}">${STATUS_LBL[o.status]}</span></span></div>
       <div class="ocard-name">${esc(clientName(o))}</div>
       <div class="ocard-sub">${esc(jobSummary(o.calc))}</div>
       <div class="ocard-bot"><span class="badge ${pc}">${pl}</span>
@@ -1954,12 +2004,20 @@ window.posOpenOrder = function (id) {
       ${o.deadline ? `<div class="row"><span class="lbl">Deadline</span><span class="dots"></span><strong class="val"${isLate(o) ? ' style="color:var(--danger)"' : ""}>${fmtDate(o.deadline)}</strong></div>` : ""}
     </div>
     <div class="card">
-      <p class="card-title t-mag">Pekerjaan</p>
+      <p class="card-title t-mag">Pekerjaan${o.calc.partner ? ' <span class="badge pay-dp">Partner</span>' : ""}</p>
+      ${o.calc.partner ? `
+      <div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">${esc(o.calc.desc)}</strong></div>
+      ${o.calc.qty ? `<div class="row"><span class="lbl">Jumlah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>` : ""}
+      ${o.partner && o.partner.name ? `<div class="row"><span class="lbl">Dikerjakan oleh</span><span class="dots"></span><strong class="val">${esc(o.partner.name)}</strong></div>` : ""}
+      <div class="row"><span class="lbl">Modal partner</span><span class="dots"></span><strong class="val">${rp(o.calc.hppTotal)}</strong></div>
+      <div class="row"><span class="lbl">Profit</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp(o.price - o.calc.hppTotal)}</strong></div>
+      ` : `
       <div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">Cetak ${o.calc.pW}×${o.calc.pH} cm, ${o.calc.colorCount} warna</strong></div>
-      <div class="row"><span class="lbl">Bahan</span><span class="dots"></span><strong class="val">${esc(o.calc.paper)}</strong></div>
+      <div class="row"><span class="lbl">Bahan</span><span class="dots"></span><strong class="val">${esc(o.calc.paper)}${o.calc.paperByClient ? " — dari klien" : ""}</strong></div>
       <div class="row"><span class="lbl">Mesin</span><span class="dots"></span><strong class="val">${esc(o.calc.mName)}</strong></div>
       <div class="row"><span class="lbl">Oplah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>
       <div class="row"><span class="lbl">Mata / plano</span><span class="dots"></span><strong class="val">${o.calc.mata} up · ${o.calc.totalPlano} plano</strong></div>
+      `}
       ${o.designNote ? `<div class="row"><span class="lbl">Desain / file</span><span class="dots"></span><strong class="val">${esc(o.designNote)}</strong></div>` : ""}
       ${o.prev ? `<div class="oldprice">Repeat dari ${esc(o.prev.no)} — harga sebelumnya ${rp(o.prev.price)}</div>` : ""}
       <div class="form-group" style="margin-top:12px"><label>Status pengerjaan</label>
@@ -2025,7 +2083,7 @@ window.posDelOrder = async function () {
   if (!ok) return;
   await idbDel("orders", o.id);
   POS.orders = POS.orders.filter(x => x.id !== o.id);
-  await stockApply(o.inputs && o.inputs.paper, o.calc.totalPlano, "batal " + o.no);
+  if (!o.calc.paperByClient && !o.calc.partner) await stockApply(o.inputs && o.inputs.paper, o.calc.totalPlano, "batal " + o.no);
   showToast("🗑️ Order dihapus");
   navGo("orders");
 };
@@ -2036,12 +2094,15 @@ window.posShareNota = function () {
   const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
   const b = POS.meta.biz || {};
   const kop = b.name ? `*${b.name}*${b.address ? "\n" + b.address : ""}${b.phone ? "\nTelp: " + b.phone : ""}\n================================\n` : "";
+  const itemTxt = o.calc.partner
+    ? `Item: ${o.calc.desc}${o.calc.qty ? "\nJumlah: " + Number(o.calc.qty).toLocaleString("id-ID") + " pcs" : ""}`
+    : `Item: Cetak ${o.calc.pW} × ${o.calc.pH} cm, ${o.calc.colorCount} warna
+Bahan: ${o.calc.paper}${o.calc.paperByClient ? " (disediakan klien)" : ""}
+Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs`;
   const t = `${kop}*NOTA ORDER ${o.no}*
 Klien: ${c ? c.name : "-"}${c && c.phone ? "\nTelp: " + c.phone : ""}
 --------------------------------
-Item: Cetak ${o.calc.pW} × ${o.calc.pH} cm, ${o.calc.colorCount} warna
-Bahan: ${o.calc.paper}
-Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs
+${itemTxt}
 --------------------------------
 Harga total: ${rp(o.price)}
 Dibayar: ${rp(paid)}
@@ -2119,7 +2180,9 @@ window.openNewOrder = function () {
   const unit = stockUnit(st);
   const butuh = lastCalc.totalPlano;
   const setelah = sisa - butuh;
-  byId("noStockInfo").innerHTML = setelah < 0
+  byId("noStockInfo").innerHTML = lastCalc.paperByClient
+    ? `<div class="stk-ok">Kertas disediakan klien — stok tidak dipakai. Klien perlu menyiapkan <b>${butuh.toLocaleString("id-ID")} plano</b> ${esc(pName)}.</div>`
+    : setelah < 0
     ? `<div class="stk-warn">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → kurang <b>${Math.abs(setelah).toLocaleString("id-ID")} lembar</b>.<br>Saran: ${beliSaran(Math.abs(setelah), unit)} — sisa nanti ${(setelah + Math.ceil(Math.abs(setelah) / unit) * unit).toLocaleString("id-ID")} lembar. Catat di tab Stok saat barang datang.</div>`
     : `<div class="stk-ok">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → sisa setelah order <b>${setelah.toLocaleString("id-ID")} lembar</b> (${rimText(setelah, unit)}).</div>`;
   const ob = byId("noOldPrice");
@@ -2175,13 +2238,14 @@ window.saveNewOrder = async function () {
       paper: (SET.papers[parseInt(pSel.value)] || {}).name || "",
       pW: lastCalc.pW, pH: lastCalc.pH, colors: lastCalc.colorCount,
       gripper: byId("useGripper").checked, qty: lastCalc.qty,
+      paperByClient: !!lastCalc.paperByClient,
       baseProfit: parseInt(byId("baseProfit").value) || 0,
       markup: parseFloat(byId("markup").value) || 0
     }
   };
   o.id = await idbPut("orders", o);
   POS.orders.push(o);
-  await stockApply(o.inputs.paper, -o.calc.totalPlano, o.no);
+  if (!o.calc.paperByClient) await stockApply(o.inputs.paper, -o.calc.totalPlano, o.no);
   REPEAT = null; byId("repeatBanner").hidden = true;
   showToast("✔️ Order " + o.no + " tersimpan");
   maybeBackupNudge();
@@ -2192,6 +2256,16 @@ window.saveNewOrder = async function () {
 window.posRepeat = function (id) {
   const o = POS.orders.find(x => x.id === id);
   if (!o) return;
+  if (o.calc.partner) {
+    // Order partner tidak lewat kalkulator — buka form partner terprefill
+    openPartnerOrder({
+      clientId: o.clientId, desc: o.calc.desc, qty: o.calc.qty,
+      partnerName: o.partner && o.partner.name, cost: o.partner && o.partner.cost,
+      markup: o.inputs && o.inputs.markup,
+      prevNo: o.no, prevPrice: o.price
+    });
+    return;
+  }
   const inp = o.inputs || {};
   const mi = SET.machines.findIndex(m => m.name === inp.machine);
   const pi = SET.papers.findIndex(p => p.name === inp.paper);
@@ -2201,6 +2275,7 @@ window.posRepeat = function (id) {
   byId("pW").value = inp.pW; byId("pH").value = inp.pH;
   byId("colors").value = String(inp.colors || 1);
   byId("useGripper").checked = inp.gripper !== false;
+  byId("paperByClient").checked = !!inp.paperByClient;
   byId("qty").value = inp.qty; byId("qtyAlt").value = "";
   if (inp.baseProfit) byId("baseProfit").value = inp.baseProfit;
   if (inp.markup || inp.markup === 0) byId("markup").value = inp.markup;
@@ -2214,6 +2289,95 @@ window.posRepeat = function (id) {
 };
 
 
+
+// ---- order partner v31 (makloon: partner beri harga jadi, kita markup) ----
+let PREPEAT = null; // { prevNo, prevPrice } utk banner repeat order partner
+window.poRecalc = function () {
+  const cost = parseInt(byId("poCost").value) || 0;
+  const m = parseFloat(byId("poMarkup").value) || 0;
+  if (cost > 0) byId("poPrice").value = Math.round(cost * (1 + m / 100));
+  poInfo();
+};
+window.poInfo = function () {
+  const cost = parseInt(byId("poCost").value) || 0;
+  const price = parseInt(byId("poPrice").value) || 0;
+  byId("poProfit").innerText = (cost > 0 && price > 0)
+    ? `Profit: ${rp(price - cost)} (modal ${rp(cost)} → jual ${rp(price)})` : "";
+};
+window.openPartnerOrder = function (pre) {
+  const sel = byId("poClientSel");
+  sel.innerHTML = `<option value="">— Klien baru —</option>` +
+    [...POS.clients].sort((a, b) => a.name.localeCompare(b.name, "id"))
+      .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  ["poName", "poPhone", "poAddr", "poDesc", "poQty", "poPartner", "poCost", "poPrice", "poDP", "poDeadline"].forEach(id => { byId(id).value = ""; });
+  const ob = byId("poOldPrice");
+  if (pre) {
+    sel.value = String(pre.clientId || "");
+    byId("poDesc").value = pre.desc || "";
+    byId("poQty").value = pre.qty || "";
+    byId("poPartner").value = pre.partnerName || "";
+    byId("poCost").value = pre.cost || "";
+    if (pre.markup || pre.markup === 0) byId("poMarkup").value = pre.markup;
+    poRecalc();
+    PREPEAT = { prevNo: pre.prevNo, prevPrice: pre.prevPrice };
+    ob.hidden = false;
+    ob.innerHTML = `Repeat order partner — harga sebelumnya <b>${rp(pre.prevPrice)}</b> (${esc(pre.prevNo)}). Cek lagi harga modal partner sekarang.`;
+  } else { PREPEAT = null; ob.hidden = true; poInfo(); }
+  onPoClientChange();
+  navScreen("partner");
+};
+window.onPoClientChange = function () {
+  const sel = byId("poClientSel");
+  const c = POS.clients.find(x => String(x.id) === sel.value);
+  ["poName", "poPhone", "poAddr"].forEach(id => byId(id).disabled = !!c);
+  if (c) { byId("poName").value = c.name; byId("poPhone").value = c.phone || ""; byId("poAddr").value = c.address || ""; }
+  else { byId("poName").value = ""; byId("poPhone").value = ""; byId("poAddr").value = ""; }
+};
+window.savePartnerOrder = async function () {
+  if (!dbGuard()) return;
+  ["poName", "poDesc", "poCost", "poPrice", "poDP"].forEach(clearErr);
+  const selVal = byId("poClientSel").value;
+  const name = byId("poName").value.trim();
+  const desc = byId("poDesc").value.trim();
+  const cost = parseInt(byId("poCost").value);
+  const price = parseInt(byId("poPrice").value);
+  const dp = parseInt(byId("poDP").value) || 0;
+  let bad = false;
+  if (!selVal && !name) { markErr("poName", "Isi nama klien"); bad = true; }
+  if (!desc) { markErr("poDesc", "Isi deskripsi pekerjaan"); bad = true; }
+  if (!cost || cost <= 0) { markErr("poCost", "Isi harga modal dari partner"); bad = true; }
+  if (!price || price <= 0) { markErr("poPrice", "Isi harga jual"); bad = true; }
+  if (dp < 0 || (price > 0 && dp > price)) { markErr("poDP", "DP melebihi harga jual"); bad = true; }
+  if (bad) return;
+  let clientId;
+  if (selVal) clientId = parseInt(selVal);
+  else {
+    const c = { name, phone: byId("poPhone").value.trim(), address: byId("poAddr").value.trim(), createdAt: Date.now() };
+    c.id = await idbPut("clients", c);
+    POS.clients.push(c);
+    clientId = c.id;
+  }
+  const qty = parseInt(byId("poQty").value) || 0;
+  const o = {
+    no: await nextOrderNo(),
+    clientId, createdAt: Date.now(),
+    deadline: byId("poDeadline").value || "",
+    status: "order",
+    payments: dp > 0 ? [{ amt: dp, ts: Date.now() }] : [],
+    price,
+    designNote: "",
+    prev: PREPEAT ? { no: PREPEAT.prevNo, price: PREPEAT.prevPrice } : null,
+    partner: { name: byId("poPartner").value.trim(), cost },
+    calc: { partner: true, desc, qty, hppTotal: cost, hppPerUnit: qty > 0 ? cost / qty : 0, totalOffer: price },
+    inputs: { partner: true, desc, qty, cost, markup: parseFloat(byId("poMarkup").value) || 0 }
+  };
+  o.id = await idbPut("orders", o);
+  POS.orders.push(o);
+  PREPEAT = null; byId("poOldPrice").hidden = true;
+  showToast("✔️ Order partner " + o.no + " tersimpan");
+  maybeBackupNudge();
+  posOpenOrder(o.id);
+};
 
 // ---- stok kertas ----
 const RIM_DEFAULT = 500;
@@ -2467,9 +2631,14 @@ function resiHtml(o) {
     <div>${tgl(o.createdAt)} &middot; ${STATUS_LBL[o.status]}</div>
     <div>Klien: ${esc(c ? c.name : "-")}</div>
     <div class="r-hr"></div>
+    ${o.calc.partner ? `
+    <div>${esc(o.calc.desc)}</div>
+    ${o.calc.qty ? `<div>Jumlah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs</div>` : ""}
+    ` : `
     <div>Cetak ${o.calc.pW}x${o.calc.pH} cm, ${o.calc.colorCount} warna</div>
-    <div>Bahan: ${esc(String(o.calc.paper).split(" (")[0])}</div>
+    <div>Bahan: ${esc(String(o.calc.paper).split(" (")[0])}${o.calc.paperByClient ? " (dari klien)" : ""}</div>
     <div>Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs</div>
+    `}
     ${o.deadline ? `<div>Estimasi selesai: ${fmtDate(o.deadline)}</div>` : ""}
     <div class="r-hr"></div>
     ${row("TOTAL", rp(o.price), "r-b")}
@@ -2711,9 +2880,14 @@ function notaPdfBlob(o) {
     txt(MR, y, v, Object.assign({ size: 9, right: true }, opt || {}));
     y -= 13;
   };
-  row("Item", `Cetak ${o.calc.pW} x ${o.calc.pH} cm, ${o.calc.colorCount} warna`);
-  row("Bahan", o.calc.paper);
-  row("Oplah", Number(o.calc.qty).toLocaleString("id-ID") + " pcs");
+  if (o.calc.partner) {
+    row("Item", o.calc.desc);
+    if (o.calc.qty) row("Jumlah", Number(o.calc.qty).toLocaleString("id-ID") + " pcs");
+  } else {
+    row("Item", `Cetak ${o.calc.pW} x ${o.calc.pH} cm, ${o.calc.colorCount} warna`);
+    row("Bahan", o.calc.paper + (o.calc.paperByClient ? " (dari klien)" : ""));
+    row("Oplah", Number(o.calc.qty).toLocaleString("id-ID") + " pcs");
+  }
   if (o.designNote) row("Desain / file", o.designNote);
   if (o.deadline) row("Estimasi selesai", fmtDate(o.deadline));
   y -= 5; line(ML, y, MR, y); y -= 18;

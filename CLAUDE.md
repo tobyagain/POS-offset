@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (108 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (132 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -19,6 +19,8 @@ Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
 1. **Blok inti kalkulasi** — mesin hitung layout/HPP/penawaran + settings + canvas.
    JANGAN ubah blok ini kecuali diminta eksplisit. Semua fitur baru dibangun
    sebagai lapisan di atasnya (pola yang dipakai sejak v24).
+   Pengecualian yang sudah disetujui Toby (v31): opsi "kertas disediakan klien"
+   (`#paperByClient` menol-kan `priceP` di `updateData`, flag ikut `lastCalc`).
 2. **Lapisan nav (v26)** — wizard 3 langkah (mobile) / workbench 2 panel (desktop ≥980px),
    registry `SCREENS`, `showScreen` diekspos sebagai `window.navScreen`,
    hook `window.onScreenChange`.
@@ -50,6 +52,10 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   sebagai pembanding (keputusan produk, bukan bug).
 - **Stok** terikat NAMA kertas; boleh minus (= order jalan, kertas belum dibeli);
   berkurang otomatis saat order disimpan; dikembalikan saat order dihapus.
+  Order "kertas dari klien" dan order partner TIDAK menyentuh stok.
+- **Order partner** (`o.calc.partner`): tanpa kalkulator; modal partner
+  tersimpan sebagai `calc.hppTotal` (laporan profit otomatis benar) dan
+  TIDAK BOLEH tampil di nota/resi klien — hanya di detail order & laporan.
 - **Nomor order** `ORD-YYMM-XXX` dari counter meta — jangan hitung dari daftar order.
 - **Nota PDF** dirakit manual level byte (tanpa library): teks ASCII-only lewat
   `pdfSan()`, offset xref = panjang byte, JPEG via DCTDecode, watermark logo
@@ -104,4 +110,6 @@ mobile/desktop → v27 POS (order, klien, stok, nota PDF ber-logo/watermark/ttd/
 stempel LUNAS) → v28 keuangan (pengeluaran kategori bebas + laporan omzet/
 profit bulanan-tahunan + piutang) → v29 resi thermal 58/80 mm (Blueprint USB
 via print dialog) → v30 optimasi cetak (area cetak 48/72, font tebal) + resi
-kirim (penerima/pengirim tanpa harga). Detail keputusan: `docs/KEPUTUSAN.md`.
+kirim (penerima/pengirim tanpa harga) → v31 kertas dari klien (jasa cetak
+saja, stok tak berkurang) + order partner (makloon: modal partner = HPP,
+markup utk profit). Detail keputusan: `docs/KEPUTUSAN.md`.

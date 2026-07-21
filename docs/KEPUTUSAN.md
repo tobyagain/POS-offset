@@ -47,8 +47,19 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   BUKAN ESC/POS langsung. ESC/POS via Web Bluetooth/USB boleh ditambah nanti
   kalau alur dialog terasa lambat di lapangan, tanpa membongkar yang ada.
 - Lebar kertas 58/80 mm dipilih di detail order, tersimpan di meta (`thermal`).
+- @page memakai area cetak efektif (48/72 mm), bukan lebar kertas — driver
+  thermal mendefinisikan halaman selebar area cetak; pakai 58/80 membuat
+  konten diskalakan/terpotong (temuan uji printer pertama).
+- Font resi: sans-serif tebal ukuran besar, bukan monospace tipis — head
+  thermal 1-bit mencetak font tipis jadi abu-abu/putus (temuan uji yang sama).
 - Resi memuat identitas usaha (konsisten aturan "identitas hanya di nota"),
   ringkasan pekerjaan, pembayaran, sisa tagihan, dan blok LUNAS bila lunas.
+- Dua jenis resi (v30): **resi order** = struk pembayaran untuk order
+  offline/di tempat; **resi kirim** = label paket berisi penerima (data klien)
+  dan pengirim (identitas usaha) saja, TANPA harga — datanya dari form klien
+  dan form identitas usaha yang sudah ada, tidak ada form baru.
+- Resi kirim tanpa alamat klien: minta konfirmasi dulu (alamat bisa ditulis
+  tangan), bukan ditolak.
 
 ## Nota & identitas
 - Kirim HPP ke front office DIHAPUS (front office pakai POS).

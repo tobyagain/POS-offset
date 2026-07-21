@@ -136,6 +136,20 @@ async function confirmDialog(w, accept = true) {
   const payload = JSON.parse(await w.__lastBlob.text());
   ok(Array.isArray(payload.expenses) && payload.expenses.length === 1 && payload.expenses[0].cat === "Kertas HVS", "backup menyertakan pengeluaran");
 
+  // Tahun lampau otomatis bisa dipilih begitu ada datanya
+  w.finTab("keluar");
+  d.getElementById("expDate").value = "2024-03-05";
+  d.getElementById("expCat").value = "Sewa";
+  d.getElementById("expAmt").value = "300000";
+  await w.expSave(); await tick();
+  w.navGo("finance");
+  w.finTab("laporan");
+  ok([...d.getElementById("rptYear").options].some(op => op.value === "2024"), "tahun lampau muncul di pilihan saat ada datanya");
+  d.getElementById("rptYear").value = "2024";
+  d.getElementById("rptMonth").value = "all";
+  w.renderReport();
+  ok(num(d.getElementById("rptExp").textContent) === 300000, "laporan setahun 2024 membaca pengeluaran tahun itu");
+
   // Persistensi setelah reload
   console.log("\n== PERSISTENSI KEUANGAN ==");
   let w2 = boot({ width: 390, idb: sharedIdb });

@@ -28,8 +28,10 @@
   --brand-ring: oklch(48% 0.15 245 / 0.22);
   --danger: oklch(52% 0.19 27);
   --danger-soft: oklch(96% 0.02 27);
+  --danger-edge: oklch(80% 0.08 27);
   --amber-soft: oklch(96% 0.035 85);
   --amber-edge: oklch(75% 0.12 80);
+  --amber-text: oklch(44% 0.10 68);
   --scrim: oklch(20% 0.02 255 / 0.5);
   --cyan: #0891b2; --magenta: #db2777; --yellow: #d97706;
   --green: #15803d; --red: #dc2626;
@@ -171,7 +173,7 @@ input::placeholder { color: var(--text-3); font-weight: 400; }
 .btn-ghost small { display: block; font-weight: 500; font-size: 11px; color: var(--text-3); margin-top: 1px; }
 .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .btn-row .btn-ghost { flex: 1; margin-top: 10px; min-width: 140px; }
-.btn-danger { color: var(--danger); border-color: var(--danger-soft); }
+.btn-danger { color: var(--danger); border-color: var(--danger-edge); }
 .btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); }
 
 /* tip & hint */
@@ -212,7 +214,6 @@ input::placeholder { color: var(--text-3); font-weight: 400; }
   padding: 8px 0; margin: 0; font-size: 14px; border-bottom: 1px solid var(--surface-2);
 }
 .row .lbl { color: var(--text-2); }
-.row .dots { display: none; }
 .row .val { font-weight: 700; white-space: nowrap; color: var(--text); }
 
 canvas {
@@ -400,12 +401,15 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 }
 
 /* ================= v27: LAPISAN POS ================= */
-.mainnav { display: flex; gap: 4px; padding: 0 0 8px; overflow-x: auto; }
+.mainnav { display: flex; gap: 4px; padding: 0 0 8px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.mainnav::-webkit-scrollbar { display: none; }
 .mainnav button {
-  flex: 1; background: none; border: 0; border-radius: 8px; padding: 7px 10px;
+  flex: 1 0 auto; background: none; border: 0; border-radius: 8px; padding: 7px 13px;
   font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--text-2);
-  cursor: pointer; white-space: nowrap; transition: background .15s, color .15s;
+  cursor: pointer; white-space: nowrap; -webkit-tap-highlight-color: transparent;
+  transition: background .15s, color .15s;
 }
+.mainnav button:hover { background: var(--surface-2); }
 .mainnav button.act { background: var(--brand-soft); color: var(--brand-strong); }
 .pos-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 14px; }
 .pos-top h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
@@ -416,12 +420,17 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
   padding: 6px 14px; font-family: var(--font); font-size: 12.5px; font-weight: 600;
   color: var(--text-2); cursor: pointer;
 }
+.chip:hover { border-color: var(--text-3); background: var(--surface-2); }
 .chip.act { background: var(--brand); border-color: var(--brand); color: #fff; }
+.chip.act:hover { background: var(--brand-strong); }
+.chip:active { transform: translateY(1px); }
 .ocard {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
   box-shadow: var(--shadow-card); padding: 13px 15px; margin-bottom: 10px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent; transition: border-color .15s, transform .05s;
 }
 .ocard:hover { border-color: var(--border-strong); }
+.ocard:active { transform: translateY(1px); }
 .ocard-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .ocard-top b { font-size: 12.5px; letter-spacing: .02em; color: var(--text-2); font-weight: 700; }
 .ocard-name { font-weight: 800; font-size: 15px; margin: 3px 0 1px; letter-spacing: -0.01em; }
@@ -430,11 +439,11 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 .ocard-bot b { margin-left: auto; font-size: 13.5px; }
 .badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
 .st-order { background: var(--brand-soft); color: var(--brand-strong); }
-.st-produksi { background: var(--amber-soft); color: oklch(50% 0.12 80); }
+.st-produksi { background: var(--amber-soft); color: var(--amber-text); }
 .st-selesai { background: oklch(95% 0.035 150); color: var(--green); }
 .st-diambil { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
 .pay-none { background: var(--danger-soft); color: var(--danger); }
-.pay-dp { background: var(--amber-soft); color: oklch(50% 0.12 80); }
+.pay-dp { background: var(--amber-soft); color: var(--amber-text); }
 .pay-full { background: oklch(95% 0.035 150); color: var(--green); }
 .ddl { font-size: 11.5px; color: var(--text-3); }
 .ddl.late { color: var(--danger); font-weight: 700; }

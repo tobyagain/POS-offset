@@ -115,6 +115,21 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   `file://` sulit dibersihkan lewat menu browser; tombol dalam aplikasi lebih
   praktis & bisa dipakai ulang.
 
+## Poles UI (v33)
+- Audit Hallmark: app dinilai sudah matang (bukan AI-slop) — token OKLCH,
+  angka tabular, focus-visible, motif CMYK. Perubahan hanya poles, bukan rombak.
+- Nav 6 tab: `flex:1 0 auto` + scrollbar disembunyikan → mengisi lebar di
+  desktop, bisa di-scroll di HP tanpa label bertabrakan (siap tab ke-7+).
+- Kartu order & chip: tambah `:active` + `-webkit-tap-highlight-color` →
+  umpan balik saat disentuh (pemakaian utama di HP).
+- Badge amber (produksi/DP): token `--amber-text` L44 untuk kontras cukup.
+- Tombol hapus: border `--danger-edge` agar aksi destruktif terlihat jelas
+  tanpa perlu hover.
+- **Nama tetap "PrintCalc Pro"** (keputusan Toby). Kunci penyimpanan internal
+  (`printcalc_settings_v3`, `printcalc_pos`, `app:"printcalc"`) TIDAK BOLEH
+  diganti walau nama tampilan berubah — mengubahnya = data tim hilang & backup
+  lama tak bisa di-import.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

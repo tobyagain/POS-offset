@@ -117,4 +117,6 @@ via print dialog) → v30 optimasi cetak (area cetak 48/72, font tebal) + resi
 kirim (penerima/pengirim tanpa harga) → v31 kertas dari klien (jasa cetak
 saja, stok tak berkurang) + order partner (makloon: modal partner = HPP,
 markup utk profit) → v32 pengingat backup (banner "belum di-backup" tiap buka)
-+ tombol hapus semua data. Detail keputusan: `docs/KEPUTUSAN.md`.
++ tombol hapus semua data → v33 poles UI (nav bisa di-scroll, umpan balik
+sentuh di kartu/chip, kontras badge, tombol hapus lebih jelas). Detail
+keputusan: `docs/KEPUTUSAN.md`.

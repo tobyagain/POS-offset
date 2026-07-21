@@ -477,6 +477,14 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
     grid-column: 1 / -1; max-width: 680px; width: 100%; margin: 0 auto;
   }
 }
+/* v32: banner pengingat backup (bukan modal — tak membajak dialog konfirmasi) */
+.backup-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--danger-soft); color: var(--danger); border: 1px solid oklch(85% 0.07 27);
+  border-radius: var(--r-field); padding: 10px 12px; margin: 0 0 14px; font-size: 12.5px; line-height: 1.45; font-weight: 600; }
+.backup-banner .bb-act { margin-left: auto; display: flex; gap: 6px; flex: 0 0 auto; }
+.backup-banner button { font-family: var(--font); font-weight: 700; font-size: 12px; cursor: pointer;
+  border-radius: 8px; padding: 7px 12px; border: 1px solid var(--danger); background: var(--danger); color: #fff; }
+.backup-banner .bb-x { background: transparent; color: var(--danger); border-color: transparent; padding: 7px 9px; }
 /* v29: resi thermal 58/80 mm — hanya tampil saat print.
    Head thermal 1-bit: font tipis tercetak abu/putus, jadi pakai sans tebal.
    @page = AREA CETAK (48/72 mm), bukan lebar kertas; konten mengisi penuh. */
@@ -514,6 +522,8 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       <button data-nav="settings" onclick="navGo('settings')">Pengaturan</button>
     </nav>
   </header>
+
+  <div id="backupBanner" class="backup-banner" hidden></div>
 
   <!-- ============ LAYAR 1: FORM WIZARD ============ -->
   <section class="screen" id="scrForm">
@@ -747,6 +757,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       </div>
       <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this.files[0])">
       <p class="set-hint" id="lastBackupInfo"></p>
+      <button class="btn-ghost btn-danger" style="margin-top:12px" onclick="wipeAllData()">Hapus semua data (mulai fresh)<small>kosongkan perangkat ini &mdash; backup dulu bila perlu</small></button>
     </div>
   </section>
 
@@ -1885,7 +1896,14 @@ function idbOpen() {
 }
 function store(name, mode) { return db.transaction(name, mode).objectStore(name); }
 function idbAll(name)      { return new Promise((res, rej) => { const q = store(name, "readonly").getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); }); }
-function idbPut(name, val) { return new Promise((res, rej) => { const q = store(name, "readwrite").put(val); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+function idbPut(name, val) {
+  // Tandai "ada perubahan sejak backup terakhir" (kecuali penulisan housekeeping lastChange/lastBackup sendiri)
+  if (!(name === "meta" && val && (val.key === "lastChange" || val.key === "lastBackup"))) {
+    POS.meta.lastChange = Date.now();
+    try { store("meta", "readwrite").put({ key: "lastChange", val: POS.meta.lastChange }); } catch (e) { /* best-effort */ }
+  }
+  return new Promise((res, rej) => { const q = store(name, "readwrite").put(val); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+}
 function idbDel(name, key) { return new Promise((res, rej) => { const q = store(name, "readwrite").delete(key); q.onsuccess = () => res(); q.onerror = () => rej(q.error); }); }
 function idbClear(name)    { return new Promise((res, rej) => { const q = store(name, "readwrite").clear(); q.onsuccess = () => res(); q.onerror = () => rej(q.error); }); }
 function dbGuard() { if (db) return true; showToast("⚠️ Penyimpanan lokal tidak tersedia", "err"); return false; }
@@ -1948,6 +1966,7 @@ const NAV_MAP = { form: "form", hasil: "form", settings: "settings", orders: "or
 window.onScreenChange = function (name) {
   const grp = NAV_MAP[name] || "";
   document.querySelectorAll("#mainNav button").forEach(b => b.classList.toggle("act", b.dataset.nav === grp));
+  if (typeof renderBackupBanner === "function") renderBackupBanner(); // segarkan pengingat backup di tiap layar
 };
 
 // ---- daftar order ----
@@ -3016,19 +3035,56 @@ window.posShareNotaPdf = async function () {
 };
 
 // ---- backup / export / import ----
+// Ada data penting & (belum pernah backup / ada perubahan sejak backup terakhir)?
+function backupOverdue() {
+  if (!(POS.orders.length || POS.expenses.length || POS.clients.length)) return false;
+  const lb = POS.meta.lastBackup || 0;
+  if (!lb) return true;
+  return (POS.meta.lastChange || 0) > lb;
+}
 function updateBackupInfo() {
   const el = byId("lastBackupInfo");
   const t = POS.meta.lastBackup;
-  el.innerText = t ? "Backup terakhir: " + new Date(t).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Belum pernah backup.";
+  const base = t ? "Backup terakhir: " + new Date(t).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Belum pernah backup.";
+  const overdue = backupOverdue();
+  el.innerText = base + (overdue ? " — ada perubahan yang belum di-backup." : "");
+  el.style.color = overdue ? "var(--danger)" : "";
 }
+// Pengingat backup = banner (bukan modal, supaya tak membajak dialog konfirmasi
+// yang dipakai flow lain). Muncul tiap buka aplikasi selama ada perubahan yang
+// belum di-backup; menghilang setelah backup atau ditutup untuk sesi ini.
+let backupDismissed = false;
+window.dismissBackupBanner = function () { backupDismissed = true; renderBackupBanner(); };
+function renderBackupBanner() {
+  const el = byId("backupBanner");
+  if (!el) return;
+  if (!db || backupDismissed || !backupOverdue()) { el.hidden = true; return; }
+  const lb = POS.meta.lastBackup;
+  const msg = lb
+    ? "Ada perubahan yang belum di-backup sejak " + new Date(lb).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) + "."
+    : "Data di perangkat ini belum pernah di-backup.";
+  el.innerHTML = `<span>💾 ${msg} Simpan salinan ke Drive/WA biar aman kalau HP hilang.</span>` +
+    `<span class="bb-act"><button onclick="exportData()">Backup sekarang</button><button class="bb-x" onclick="dismissBackupBanner()" aria-label="Tutup">✕</button></span>`;
+  el.hidden = false;
+}
+window.wipeAllData = async function () {
+  if (!dbGuard()) return;
+  const ok = await askConfirm("Hapus SEMUA data di perangkat ini — order, klien, stok, keuangan, dan pengaturan? Tindakan ini tidak bisa dibatalkan. Backup dulu jika ada data penting.", "Hapus semua");
+  if (!ok) return;
+  await idbClear("orders"); await idbClear("clients"); await idbClear("meta"); await idbClear("stock"); await idbClear("expenses");
+  try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem("printcalc_lastsel"); } catch (e) { /* localStorage tak tersedia */ }
+  showToast("🗑️ Semua data dihapus — memuat ulang…");
+  setTimeout(() => location.reload(), 900);
+};
 async function markBackup() {
   POS.meta.lastBackup = Date.now();
   if (db) await idbPut("meta", { key: "lastBackup", val: POS.meta.lastBackup });
   updateBackupInfo();
+  renderBackupBanner();
 }
 window.exportData = async function () {
   const payload = {
-    app: "printcalc", ver: 28, exportedAt: new Date().toISOString(),
+    app: "printcalc", ver: 32, exportedAt: new Date().toISOString(),
     settings: localStorage.getItem(STORAGE_KEY) || JSON.stringify(SET),
     lastsel: localStorage.getItem("printcalc_lastsel") || null,
     clients: POS.clients, orders: POS.orders, stock: POS.stock, expenses: POS.expenses,
@@ -3065,6 +3121,8 @@ window.importData = async function (file) {
   for (const e of (data.expenses || [])) await idbPut("expenses", e);
   if (data.settings) localStorage.setItem(STORAGE_KEY, data.settings);
   if (data.lastsel) localStorage.setItem("printcalc_lastsel", data.lastsel);
+  // file import = salinan backup: tandai sudah-backup agar tidak langsung menagih
+  await idbPut("meta", { key: "lastBackup", val: Date.now() });
   showToast("✔️ Data berhasil di-import — memuat ulang…");
   setTimeout(() => location.reload(), 900);
 };
@@ -3093,7 +3151,7 @@ function maybeBackupNudge() {
   bizLoadForm();
   signPreview();
   navGo("orders");
-  maybeBackupNudge();
+  renderBackupBanner(); // pengingat backup saat buka aplikasi (pengganti auto-backup-on-close yang tak andal di browser)
 })();
 })();
 </script>

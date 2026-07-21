@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (136 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (155 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -39,8 +39,10 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
 - **IndexedDB `printcalc_pos` versi 3**: `orders` (autoInc id), `clients` (autoInc id),
   `meta` (key), `stock` (key = nama kertas), `expenses` (autoInc id).
   Naikkan versi DB + `onupgradeneeded` bila menambah store.
-- `meta` berisi: counter nomor order `seq-YYMM`, `lastBackup`, `biz` {name,address,phone},
-  `logo` {dataUrl,w,h}, `sign` {dataUrl,w,h}, `thermal` {width: 58|80}.
+- `meta` berisi: counter nomor order `seq-YYMM`, `lastBackup`, `lastChange`
+  (di-bump otomatis oleh `idbPut` di setiap tulis data — dasar deteksi
+  "belum di-backup"), `biz` {name,address,phone}, `logo` {dataUrl,w,h},
+  `sign` {dataUrl,w,h}, `thermal` {width: 58|80}.
 - `expenses` berisi: {date "YYYY-MM-DD", cat (teks bebas), amt, note, hpp (bool
   "sudah terhitung HPP order"), ts}.
 
@@ -114,4 +116,5 @@ profit bulanan-tahunan + piutang) → v29 resi thermal 58/80 mm (Blueprint USB
 via print dialog) → v30 optimasi cetak (area cetak 48/72, font tebal) + resi
 kirim (penerima/pengirim tanpa harga) → v31 kertas dari klien (jasa cetak
 saja, stok tak berkurang) + order partner (makloon: modal partner = HPP,
-markup utk profit). Detail keputusan: `docs/KEPUTUSAN.md`.
+markup utk profit) → v32 pengingat backup (banner "belum di-backup" tiap buka)
++ tombol hapus semua data. Detail keputusan: `docs/KEPUTUSAN.md`.

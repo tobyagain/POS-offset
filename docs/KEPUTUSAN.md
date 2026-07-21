@@ -96,6 +96,25 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
 - Stempel LUNAS vektor merah miring -12° + tanggal pelunasan, otomatis saat
   paid ≥ price.
 
+## Backup & fresh start (v32)
+- **Auto-backup saat aplikasi ditutup DITOLAK secara teknis**: browser tidak
+  mengizinkan unduh/share file saat halaman ditutup, dan event "close"
+  (`beforeunload`) tidak andal di HP (sering tak jalan saat pindah aplikasi).
+  Memaksakannya = rasa aman palsu. Menutup aplikasi TIDAK menghilangkan data
+  (tetap di IndexedDB); risiko nyata hanya HP hilang / "hapus data browser",
+  yang butuh salinan keluar-HP (file ke Drive/WA) — dan itu wajib satu ketukan.
+- Sebagai gantinya: **banner pengingat** ("belum di-backup") muncul tiap buka
+  aplikasi selama ada perubahan yang belum di-backup. BUKAN modal — modal
+  `askConfirm` yang muncul otomatis membajak dialog konfirmasi bersama dan
+  bentrok dgn flow lain (mis. hapus order). Banner: tombol "Backup sekarang"
+  (1 ketuk ekspor) + tutup (hilang utk sesi ini, muncul lagi sesi berikutnya).
+- Deteksi "belum di-backup": `meta.lastChange` (di-bump `idbPut` tiap tulis
+  data) > `meta.lastBackup`. Import dihitung sebagai sudah-backup.
+- **Tombol "Hapus semua data"** di Pengaturan (mulai fresh): kosongkan semua
+  store IndexedDB + localStorage settings, dgn konfirmasi. Dibuat karena file
+  `file://` sulit dibersihkan lewat menu browser; tombol dalam aplikasi lebih
+  praktis & bisa dipakai ulang.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

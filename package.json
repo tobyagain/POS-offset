@@ -1,0 +1,13 @@
+{
+  "name": "pos-offset",
+  "version": "27.0.0",
+  "private": true,
+  "description": "PrintCalc Pro - POS + kalkulator cetak offset Dahlia Pack (single-file HTML)",
+  "scripts": {
+    "test": "node tests/test_pos.js && node tests/test_stock.js"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.0.0",
+    "jsdom": "^24.0.0"
+  }
+}

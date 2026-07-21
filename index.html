@@ -1,0 +1,2627 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PrintCalc Pro — Kalkulasi Cetak Offset</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+
+/* PrintCalc Pro · genre: modern-minimal (SaaS) · brand: cobalt-cyan offset
+ * konsep: produk komersial untuk bisnis percetakan offset — bersih, tepercaya, siap jual
+ * type: Plus Jakarta Sans tunggal, angka tabular · JS & ID identik dgn versi sebelumnya
+ */
+:root {
+  --canvas: oklch(97% 0.005 250);
+  --surface: #ffffff;
+  --surface-2: oklch(98.2% 0.004 250);
+  --border: oklch(90% 0.008 250);
+  --border-strong: oklch(82% 0.012 250);
+  --text: oklch(25% 0.02 255);
+  --text-2: oklch(47% 0.015 252);
+  --text-3: oklch(62% 0.012 252);
+  --brand: oklch(48% 0.15 245);
+  --brand-strong: oklch(41% 0.15 245);
+  --brand-soft: oklch(94.5% 0.025 245);
+  --brand-ring: oklch(48% 0.15 245 / 0.22);
+  --danger: oklch(52% 0.19 27);
+  --danger-soft: oklch(96% 0.02 27);
+  --amber-soft: oklch(96% 0.035 85);
+  --amber-edge: oklch(75% 0.12 80);
+  --scrim: oklch(20% 0.02 255 / 0.5);
+  --cyan: #0891b2; --magenta: #db2777; --yellow: #d97706;
+  --green: #15803d; --red: #dc2626;
+  --shadow-card: 0 1px 2px oklch(25% 0.02 255 / 0.05), 0 8px 24px oklch(25% 0.02 255 / 0.06);
+  --shadow-pop: 0 4px 12px oklch(25% 0.02 255 / 0.12), 0 16px 40px oklch(25% 0.02 255 / 0.14);
+  --r-card: 14px; --r-field: 9px;
+  --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* alias lama — dipakai style inline & kanvas */
+  --bg: var(--canvas); --card: var(--surface); --line: var(--border); --line2: var(--border-strong);
+  --paper: var(--surface); --field: var(--surface); --ink: var(--text); --muted: var(--text-2);
+  --primary: var(--brand); --primary-dark: var(--brand-strong);
+}
+* { box-sizing: border-box; }
+html, body { overflow-x: clip; }
+body {
+  margin: 0; padding: 0 0 64px;
+  background: var(--canvas); color: var(--text); line-height: 1.55;
+  font-family: var(--font);
+  font-feature-settings: "tnum" 1;
+}
+.container { max-width: 680px; margin: auto; padding: 0 16px; }
+
+/* ================= APP BAR ================= */
+.masthead {
+  position: sticky; top: 0; z-index: 20;
+  background: oklch(100% 0 0 / 0.85); backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  margin: 0 -16px 22px; padding: 0 16px;
+}
+.mast-meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 58px; padding: 8px 0;
+}
+.mast-meta .eyebrow { display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 16.5px; letter-spacing: -0.02em; color: var(--text); }
+.mast-meta .eyebrow small { font-weight: 600; font-size: 11px; color: var(--brand); background: var(--brand-soft); border-radius: 999px; padding: 2px 9px; letter-spacing: 0; }
+.cmyk { display: inline-flex; gap: 2.5px; }
+.cmyk i { width: 8px; height: 8px; border-radius: 2.5px; display: inline-block; }
+.cmyk i:nth-child(1){background:var(--cyan)} .cmyk i:nth-child(2){background:var(--magenta)}
+.cmyk i:nth-child(3){background:var(--yellow)} .cmyk i:nth-child(4){background:var(--text)}
+.mast-actions { display: flex; gap: 8px; }
+.btn-gear {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border-strong);
+  border-radius: 999px; padding: 8px 15px; font-family: var(--font);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.btn-gear:hover { border-color: var(--text-3); background: var(--surface-2); }
+.wordmark {
+  margin: 26px 0 6px; font-weight: 800; letter-spacing: -0.03em;
+  font-size: clamp(1.6rem, 4.5vw, 2.1rem); line-height: 1.15; color: var(--text);
+}
+.wordmark span { color: var(--brand); }
+.page-sub { margin: 0 0 22px; color: var(--text-2); font-size: 14.5px; max-width: 52ch; }
+
+/* ================= KOLOM ================= */
+.cols { display: grid; grid-template-columns: 1fr; gap: 0; align-items: start; }
+#resPlaceholder { display: none; }
+@media (min-width: 980px) {
+  .container { max-width: 1180px; }
+  .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; }
+  #resPlaceholder {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    color: var(--text-3); font-size: 14px; min-height: 220px;
+    background: transparent; border: 1.5px dashed var(--border-strong);
+    border-radius: var(--r-card); box-shadow: none; padding: 40px 24px;
+  }
+}
+
+/* ================= KARTU ================= */
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+  padding: 20px 18px; margin-bottom: 18px; box-shadow: var(--shadow-card);
+}
+.card-title {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 700; letter-spacing: -0.01em; color: var(--text);
+  margin: 0 0 14px; padding: 0 0 12px; border-bottom: 1px solid var(--border);
+}
+.card-title::before { content: ""; width: 8px; height: 8px; border-radius: 3px; background: var(--brand); flex: 0 0 auto; }
+.card-title.t-mag::before { background: var(--magenta); }
+.card-title.t-yel::before { background: var(--yellow); }
+
+/* ================= PANEL INPUT ================= */
+.ticket { padding: 0; overflow: hidden; }
+.ticket-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 15px 18px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+  border-radius: var(--r-card) var(--r-card) 0 0;
+}
+.ticket-head b { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.ticket-head .colorbar { margin: 0; width: 46px; height: 6px; border: 0; border-radius: 999px; flex: 0 0 auto; }
+.ticket-body { padding: 18px; }
+.tsec { margin: 22px 0 12px; padding: 0; border: 0; display: flex; align-items: center; gap: 10px; }
+.tsec:first-child { margin-top: 2px; }
+.tsec h2 {
+  margin: 0; font-size: 11.5px; font-weight: 700; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--text-3); white-space: nowrap;
+}
+.tsec::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+
+.grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.form-group { margin-bottom: 12px; min-width: 0; }
+label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 6px; color: var(--text-2); }
+input[type="number"], input[type="text"], select {
+  width: 100%; padding: 11px 12px; border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-field); font-size: 16px; font-weight: 600;
+  background: var(--surface); color: var(--text); font-family: var(--font);
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-ring); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+input::placeholder { color: var(--text-3); font-weight: 400; }
+
+.opt-group {
+  background: var(--surface-2); padding: 12px 14px; border: 1px solid var(--border);
+  border-radius: var(--r-field); margin: 2px 0 14px;
+  display: flex; justify-content: flex-start; flex-wrap: wrap;
+}
+.opt-group .hint { width: 100%; margin-bottom: 0; }
+.check-item { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 600; color: var(--text); }
+.check-item input[type="checkbox"] { width: 18px; height: 18px; margin: 0; accent-color: var(--brand); }
+
+.btn-primary {
+  width: 100%; padding: 14px; background: var(--brand); color: #fff;
+  border: 0; border-radius: 999px;
+  font-family: var(--font); font-weight: 700; font-size: 15px; letter-spacing: -0.01em;
+  cursor: pointer; margin-top: 10px; box-shadow: 0 1px 2px oklch(25% 0.02 255 / 0.2);
+  transition: background .15s, transform .05s;
+}
+.btn-primary:hover { background: var(--brand-strong); }
+.btn-primary:active { transform: translateY(1px); }
+.btn-ghost {
+  width: 100%; padding: 11px 14px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border-strong); border-radius: 999px; cursor: pointer;
+  font-family: var(--font); font-weight: 600; font-size: 13.5px; margin-top: 10px;
+  transition: border-color .15s, background .15s;
+}
+.btn-ghost:hover { border-color: var(--text-3); background: var(--surface-2); }
+.btn-ghost small { display: block; font-weight: 500; font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-row .btn-ghost { flex: 1; margin-top: 10px; min-width: 140px; }
+.btn-danger { color: var(--danger); border-color: var(--danger-soft); }
+.btn-danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+
+/* tip & hint */
+.tip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 17px; height: 17px; margin-left: 5px; padding: 0; vertical-align: -3px;
+  border: 1.5px solid var(--border-strong); background: var(--surface); border-radius: 999px;
+  color: var(--text-3); font-size: 10.5px; font-weight: 700; font-family: var(--font);
+  cursor: pointer; line-height: 1; transition: color .15s, border-color .15s;
+}
+.tip:hover, .tip.on { border-color: var(--brand); color: var(--brand); }
+.hint {
+  font-size: 13px; color: var(--text); background: var(--amber-soft);
+  border: 1px solid var(--border); border-left: 3px solid var(--amber-edge);
+  border-radius: 8px; padding: 9px 12px; margin: 8px 0; line-height: 1.5; font-weight: 400;
+}
+.hint[hidden] { display: none; }
+
+/* ================= RINGKASAN HASIL ================= */
+.sumbar { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+.sum {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px 14px; min-width: 0; box-shadow: var(--shadow-card);
+}
+.sum span { display: block; font-size: 11px; font-weight: 600; color: var(--text-3); margin-bottom: 3px; }
+.sum b { font-size: 15px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.sum.big { grid-column: 1 / -1; background: var(--brand); border-color: var(--brand); }
+.sum.big span { color: oklch(100% 0 0 / 0.75); }
+.sum.big b { font-size: clamp(24px, 6vw, 30px); line-height: 1.1; letter-spacing: -0.02em; color: #fff; font-weight: 800; }
+.scoreboard { border: 0; padding: 0; background: transparent; box-shadow: none; }
+@media (max-width: 979px) {
+  .sum.big { position: sticky; top: 66px; z-index: 15; box-shadow: var(--shadow-pop); }
+}
+
+/* ================= BARIS RINCIAN ================= */
+.row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 8px 0; margin: 0; font-size: 14px; border-bottom: 1px solid var(--surface-2);
+}
+.row .lbl { color: var(--text-2); }
+.row .dots { display: none; }
+.row .val { font-weight: 700; white-space: nowrap; color: var(--text); }
+
+canvas {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  margin: 12px auto 2px; max-width: 100%; height: auto; display: block;
+}
+canvas.clickable { cursor: zoom-in; -webkit-tap-highlight-color: transparent; }
+.cv-cap { font-size: 12px; font-weight: 600; color: var(--text-3); margin: 16px 0 0; text-align: center; }
+
+/* ================= DOKUMEN PENAWARAN ================= */
+.tearline { display: none; }
+.nota {
+  position: relative; background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--r-card);
+  padding: 22px 20px 18px; margin-bottom: 18px; box-shadow: var(--shadow-pop);
+}
+.nota::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: var(--r-card) var(--r-card) 0 0; background: linear-gradient(90deg, var(--cyan) 0 25%, var(--magenta) 25% 50%, var(--yellow) 50% 75%, var(--text) 75% 100%); }
+.nota h2 { margin: 2px 0 2px; font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.nota .hr { height: 0; border-top: 1px solid var(--border); margin: 12px 0; }
+.nota-order { font-size: 13px; color: var(--text-2); margin: 0 0 14px; }
+.nsec { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin: 4px 0 4px; }
+.nsec em { font-style: normal; font-weight: 700; color: var(--text-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; margin-left: 6px; letter-spacing: 0; text-transform: none; }
+.nota .total-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px; background: var(--brand-soft); border-radius: 10px; padding: 12px 14px;
+}
+.nota .total-row .lbl { font-weight: 700; font-size: 13px; color: var(--brand-strong); }
+.price-tag { font-size: clamp(21px, 5vw, 26px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; color: var(--brand-strong); }
+.unit-row { text-align: right; font-size: 13px; color: var(--text-2); margin-top: 8px; }
+.profit-val { color: var(--green); }
+.colorbar { display: flex; height: 6px; border: 0; border-radius: 999px; overflow: hidden; margin: 0 0 14px; }
+.colorbar i { flex: 1; }
+.colorbar i:nth-child(1){background:var(--cyan)} .colorbar i:nth-child(2){background:var(--magenta)}
+.colorbar i:nth-child(3){background:var(--yellow)} .colorbar i:nth-child(4){background:var(--text)}
+.nota .colorbar { display: none; }
+
+/* ================= PENGATURAN ================= */
+#settingsCard { display: none; }
+h3.set { font-size: 12px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); border-bottom: 1px solid var(--border); padding-bottom: 6px; margin: 20px 0 12px; }
+.paper-head, .paper-row { display: grid; grid-template-columns: 1.7fr 0.65fr 0.65fr 1fr 0.75fr 38px; gap: 6px; align-items: center; margin-bottom: 8px; }
+.paper-head span { font-size: 10.5px; font-weight: 600; color: var(--text-3); }
+.paper-row input { padding: 9px 9px; font-size: 16px; }
+.btn-del {
+  width: 38px; height: 42px; padding: 0; background: var(--surface); color: var(--danger);
+  border: 1.5px solid var(--border-strong); border-radius: var(--r-field);
+  font-size: 13px; font-weight: 700; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.btn-del:hover { border-color: var(--danger); background: var(--danger-soft); }
+.machine-block { border: 1px solid var(--border); border-radius: var(--r-field); padding: 10px; margin-bottom: 10px; background: var(--surface-2); }
+.machine-head { display: flex; gap: 8px; margin-bottom: 8px; }
+.machine-head input { flex: 1; min-width: 0; }
+.machine-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; }
+.machine-grid label { font-size: 11px; margin-bottom: 0; }
+.machine-grid input { margin-top: 4px; padding: 9px 8px; font-size: 16px; }
+@media (max-width: 560px) { .machine-grid { grid-template-columns: 1fr 1fr; } }
+
+/* ================= OVERLAY ================= */
+.zoom-overlay { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(3px); z-index: 50; display: none; flex-direction: column; padding: 12px; }
+.zoom-overlay.open { display: flex; }
+.zoom-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex: 0 0 auto; }
+.zoom-title { font-size: 13.5px; font-weight: 700; color: #fff; }
+.btn-close {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  width: 40px; height: 40px; border-radius: 999px; font-size: 15px; font-weight: 700; cursor: pointer; flex: 0 0 auto;
+  box-shadow: var(--shadow-card);
+}
+.zoom-body { flex: 1 1 auto; min-height: 0; }
+#zoomCanvas { width: 100%; height: 100%; border: 0; border-radius: 12px; background: var(--surface); display: block; margin: 0; }
+
+.help-overlay { position: fixed; inset: 0; background: var(--scrim); backdrop-filter: blur(3px); z-index: 60; display: none; padding: 14px; overflow-y: auto; }
+.help-overlay.open { display: block; }
+.help-card { max-width: 560px; margin: 16px auto 32px; box-shadow: var(--shadow-pop); }
+.help-card .zoom-title { color: var(--text); font-size: 16px; }
+.help-card h3 { font-size: 12px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); border-bottom: 1px solid var(--border); padding-bottom: 6px; margin: 22px 0 10px; }
+.help-card ol { margin: 0; padding-left: 20px; font-size: 14px; }
+.help-card ol li { margin-bottom: 8px; }
+.glos { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; font-size: 13.5px; }
+.glos dt { font-weight: 700; color: var(--brand); margin: 0; }
+.glos dd { margin: 0; color: var(--text-2); }
+
+.result-section { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .result-section.show { animation: rise .35s cubic-bezier(0.16, 1, 0.3, 1); }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+}
+@media (max-width: 420px) {
+  .grid3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ================= TOAST · DIALOG · TABEL ================= */
+.toast {
+  position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(14px);
+  opacity: 0; background: var(--text); color: var(--surface); padding: 11px 18px;
+  border: 0; border-radius: 999px; box-shadow: var(--shadow-pop);
+  font-size: 13.5px; font-weight: 600; z-index: 80; pointer-events: none;
+  transition: all .22s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 90vw; text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.err { background: var(--danger); color: #fff; }
+input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(52% 0.19 27 / 0.15) !important; }
+.ferr { color: var(--danger); font-size: 12px; margin-top: 5px; font-weight: 600; }
+.cf-card { max-width: 420px; }
+.cf-card p { white-space: pre-line; font-size: 14.5px; margin: 4px 0 14px; line-height: 1.55; }
+.cf-card .btn-primary { flex: 1.4; margin-top: 10px; padding: 11px 8px; font-size: 13.5px; }
+.ctable { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ctable th { font-size: 11px; font-weight: 600; color: var(--text-3); text-align: right; padding: 7px 6px; border-bottom: 1.5px solid var(--border-strong); }
+.ctable th:first-child, .ctable td:first-child { text-align: left; }
+.ctable td { padding: 10px 6px; border-bottom: 1px solid var(--surface-2); text-align: right; font-weight: 500; }
+.ctable tr.cur td { background: var(--brand-soft); font-weight: 700; }
+.ctable td b { color: var(--brand-strong); }
+
+/* ================= v24: WIZARD & TAB (pengalaman aplikasi) ================= */
+[hidden] { display: none !important; }
+.container { max-width: 560px; }
+@media (min-width: 980px) { .container { max-width: 640px; } }
+
+.screen { min-height: 40vh; }
+
+.wiz-top { display: flex; align-items: center; gap: 12px; margin: 4px 0 6px; }
+.wiz-back {
+  background: var(--surface); border: 1px solid var(--border-strong); color: var(--text);
+  width: 38px; height: 38px; border-radius: 999px; font-size: 15px; cursor: pointer; flex: 0 0 auto;
+  transition: border-color .15s, background .15s;
+}
+.wiz-back:hover { border-color: var(--text-3); background: var(--surface-2); }
+.wiz-dots { display: flex; gap: 6px; align-items: center; }
+.wiz-dots .dot { width: 22px; height: 6px; border-radius: 999px; background: var(--border); transition: background .2s, width .2s; }
+.wiz-dots .dot.act { background: var(--brand); width: 34px; }
+.wiz-dots .dot.done { background: var(--brand); opacity: 0.45; }
+.wiz-count { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--text-3); }
+
+.step-title { margin: 14px 0 2px; font-size: clamp(1.35rem, 5vw, 1.7rem); font-weight: 800; letter-spacing: -0.025em; }
+.step-sub { margin: 0 0 16px; color: var(--text-2); font-size: 14px; }
+
+.wiz-nav { display: flex; gap: 10px; margin-top: 6px; }
+.wiz-nav .btn-primary { margin-top: 0; }
+
+.hasil-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 14px; }
+.hasil-top h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+.btn-edit {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border-strong); color: var(--text);
+  border-radius: 999px; padding: 8px 15px; font-family: var(--font);
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .15s, background .15s;
+}
+.btn-edit:hover { border-color: var(--text-3); background: var(--surface-2); }
+
+.tabbar {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px;
+  padding: 4px; margin: 14px 0 16px; box-shadow: var(--shadow-card);
+  position: sticky; top: 66px; z-index: 15;
+}
+.tabbar button {
+  border: 0; background: transparent; color: var(--text-2); font-family: var(--font);
+  font-size: 13.5px; font-weight: 600; padding: 9px 4px; border-radius: 999px; cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.tabbar button.act { background: var(--brand); color: #fff; }
+.tabbar button:not(.act):hover { background: var(--surface-2); color: var(--text); }
+@media (max-width: 979px) {
+  .sum.big { position: static; box-shadow: var(--shadow-card); }
+}
+
+.set-top { display: flex; align-items: center; gap: 12px; margin: 4px 0 14px; }
+.set-top h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+
+/* ================= v26: MODE WORKBENCH (desktop) ================= */
+@media (min-width: 980px) {
+  body.wb .container {
+    max-width: 1200px; display: grid;
+    grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+    gap: 28px; align-items: start;
+  }
+  body.wb .masthead { grid-column: 1 / -1; }
+  body.wb #scrSettings { grid-column: 1 / -1; max-width: 640px; width: 100%; margin: 0 auto; }
+  body.wb .wiz-top { display: none; }
+  body.wb .hasil-top .btn-edit { display: none; }
+  body.wb .step-title { font-size: 1.05rem; margin: 20px 0 2px; }
+  body.wb #step1 .step-title { margin-top: 2px; }
+  body.wb .step-sub { font-size: 12.5px; margin-bottom: 10px; }
+  body.wb .hasil-top h2 { font-size: 1.05rem; }
+  body.wb #resPlaceholder { box-shadow: none; }
+}
+
+/* ================= v27: LAPISAN POS ================= */
+.mainnav { display: flex; gap: 4px; padding: 0 0 8px; overflow-x: auto; }
+.mainnav button {
+  flex: 1; background: none; border: 0; border-radius: 8px; padding: 7px 10px;
+  font-family: var(--font); font-size: 13px; font-weight: 600; color: var(--text-2);
+  cursor: pointer; white-space: nowrap; transition: background .15s, color .15s;
+}
+.mainnav button.act { background: var(--brand-soft); color: var(--brand-strong); }
+.pos-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 0 14px; }
+.pos-top h2 { margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; }
+.pos-top .grp { display: flex; align-items: center; gap: 12px; }
+.chiprow { display: flex; gap: 8px; margin: 0 0 14px; }
+.chip {
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px;
+  padding: 6px 14px; font-family: var(--font); font-size: 12.5px; font-weight: 600;
+  color: var(--text-2); cursor: pointer;
+}
+.chip.act { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ocard {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+  box-shadow: var(--shadow-card); padding: 13px 15px; margin-bottom: 10px; cursor: pointer;
+}
+.ocard:hover { border-color: var(--border-strong); }
+.ocard-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ocard-top b { font-size: 12.5px; letter-spacing: .02em; color: var(--text-2); font-weight: 700; }
+.ocard-name { font-weight: 800; font-size: 15px; margin: 3px 0 1px; letter-spacing: -0.01em; }
+.ocard-sub { font-size: 12.5px; color: var(--text-2); }
+.ocard-bot { display: flex; align-items: center; gap: 8px; margin-top: 9px; flex-wrap: wrap; }
+.ocard-bot b { margin-left: auto; font-size: 13.5px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; }
+.st-order { background: var(--brand-soft); color: var(--brand-strong); }
+.st-produksi { background: var(--amber-soft); color: oklch(50% 0.12 80); }
+.st-selesai { background: oklch(95% 0.035 150); color: var(--green); }
+.st-diambil { background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+.pay-none { background: var(--danger-soft); color: var(--danger); }
+.pay-dp { background: var(--amber-soft); color: oklch(50% 0.12 80); }
+.pay-full { background: oklch(95% 0.035 150); color: var(--green); }
+.ddl { font-size: 11.5px; color: var(--text-3); }
+.ddl.late { color: var(--danger); font-weight: 700; }
+.pos-empty {
+  text-align: center; color: var(--text-3); font-size: 13.5px; line-height: 1.7;
+  padding: 34px 14px; background: var(--surface);
+  border: 1px dashed var(--border-strong); border-radius: var(--r-card);
+}
+.pay-add { display: flex; gap: 8px; margin-top: 12px; align-items: stretch; }
+.pay-add .btn-ghost { margin: 0; white-space: nowrap; width: auto; }
+.oldprice {
+  font-size: 12.5px; color: var(--text); background: var(--amber-soft);
+  border: 1px solid var(--amber-edge); border-radius: var(--r-field);
+  padding: 9px 12px; margin: 10px 0 14px; line-height: 1.5;
+}
+.stk-qty { font-weight: 800; font-size: 16px; letter-spacing: -0.01em; }
+.stk-qty.minus { color: var(--danger); }
+.stk-rim { font-size: 11.5px; color: var(--text-3); font-weight: 600; }
+.stk-body { border-top: 1px solid var(--border); margin-top: 11px; padding-top: 11px; }
+.stk-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px; }
+.stk-row .form-group { margin: 0; flex: 1; }
+.stk-row select { width: 92px; flex: 0 0 auto; }
+.stk-row .btn-ghost { margin: 0; width: auto; white-space: nowrap; }
+.stk-log { font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
+.stk-log .row { padding: 2px 0; }
+.stk-warn {
+  font-size: 12.5px; background: var(--danger-soft); color: var(--danger);
+  border: 1px solid oklch(85% 0.07 27); border-radius: var(--r-field);
+  padding: 9px 12px; margin-top: 10px; line-height: 1.5;
+}
+.stk-ok {
+  font-size: 12.5px; background: oklch(95% 0.035 150); color: var(--green);
+  border: 1px solid oklch(85% 0.06 150); border-radius: var(--r-field);
+  padding: 9px 12px; margin-top: 10px; line-height: 1.5;
+}
+@media (min-width: 980px) {
+  body.wb #scrOrders, body.wb #scrOrderDetail, body.wb #scrClients,
+  body.wb #scrClientDetail, body.wb #scrNewOrder, body.wb #scrStock {
+    grid-column: 1 / -1; max-width: 680px; width: 100%; margin: 0 auto;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header class="masthead">
+    <div class="mast-meta">
+      <span class="eyebrow"><span class="cmyk"><i></i><i></i><i></i><i></i></span> PrintCalc <small>Pro</small></span>
+      <div class="mast-actions">
+        <button class="btn-gear" onclick="openHelp()">Panduan</button>
+      </div>
+    </div>
+    <nav class="mainnav" id="mainNav">
+      <button data-nav="orders" onclick="navGo('orders')">Order</button>
+      <button data-nav="form" onclick="navGo('form')">Kalkulator</button>
+      <button data-nav="clients" onclick="navGo('clients')">Klien</button>
+      <button data-nav="stock" onclick="navGo('stock')">Stok</button>
+      <button data-nav="settings" onclick="navGo('settings')">Pengaturan</button>
+    </nav>
+  </header>
+
+  <!-- ============ LAYAR 1: FORM WIZARD ============ -->
+  <section class="screen" id="scrForm">
+    <div class="wiz-top">
+      <button id="btnBack" class="wiz-back" onclick="wizBack()" aria-label="Langkah sebelumnya">&#8592;</button>
+      <div class="wiz-dots"><span class="dot act" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span></div>
+      <span class="wiz-count" id="wizCount">1 / 3</span>
+    </div>
+
+    <div class="step" id="step1" data-step="1">
+      <h1 class="step-title">Mesin &amp; bahan</h1>
+      <p class="step-sub">Pilih mesin cetak dan material plano untuk pesanan ini.</p>
+      <div class="card">
+        <div class="form-group">
+          <label>Jenis mesin</label>
+          <select id="machineType"></select>
+        </div>
+        <div class="form-group">
+          <label>Material plano</label>
+          <select id="paperType"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step2" data-step="2" hidden>
+      <h1 class="step-title">Ukuran &amp; warna</h1>
+      <p class="step-sub">Ukuran hasil jadi setelah dipotong, jumlah warna, dan gripper.</p>
+      <div class="card">
+        <div class="grid3">
+          <div class="form-group"><label>L potong (cm) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="pW" value="25"><div class="hint" hidden>Ukuran hasil jadi setelah dipotong, dalam cm. Orientasi bebas &mdash; sistem otomatis mencoba posisi tegak dan diputar untuk layout termurah.</div></div>
+          <div class="form-group"><label>T potong (cm)</label><input type="number" id="pH" value="35"></div>
+          <div class="form-group"><label>Jumlah warna <button type="button" class="tip" onclick="toggleTip(this)">i</button></label>
+            <select id="colors"><option value="1">1 warna</option><option value="2">2 warna</option></select>
+            <div class="hint" hidden>Tiap warna = satu lintasan cetak tambahan. Ongkos druk dikalikan jumlah warna.</div>
+          </div>
+        </div>
+        <div class="opt-group">
+          <label class="check-item"><input type="checkbox" id="useGripper" checked onchange="gripReminderOff=false"> Gripper dinamis (wajib offset) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label>
+          <div class="hint" hidden>Mesin offset mencengkeram tepi kertas (default 1,5 cm) yang tidak bisa dicetak. Biarkan aktif untuk cetak offset. <b>Kecuali:</b> untuk ukuran maksimal mesin (mis. 50&times;70 di Mesin 72), matikan opsi ini &mdash; gripper akan mengambil area cetak sehingga ukuran tidak muat, dan itu normal.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step3" data-step="3" hidden>
+      <h1 class="step-title">Oplah &amp; harga</h1>
+      <p class="step-sub">Jumlah pesanan dan target keuntungan.</p>
+      <div class="card">
+        <div class="grid">
+          <div class="form-group"><label>Oplah pesanan (pcs) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="qty" value="1000"><div class="hint" hidden>Jumlah pesanan customer. Cadangan reject (inshiet) ditambahkan otomatis di produksi dan tidak mengubah harga jual.</div></div>
+          <div class="form-group"><label>Oplah pembanding &mdash; opsional <button type="button" class="tip" onclick="toggleTip(this)">i</button></label>
+            <input type="text" id="qtyAlt" placeholder="cth: 2000, 5000" inputmode="numeric">
+            <div class="hint" hidden>Untuk client yang minta beberapa opsi jumlah sebagai pembanding. Isi oplah lain dipisah koma &mdash; hasilnya tampil sebagai tabel perbandingan dan bisa dikirim sekaligus ke client.</div>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="form-group"><label>Profit dasar (Rp) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="baseProfit" value="250000"><div class="hint" hidden>Keuntungan minimum per pekerjaan, berlaku untuk semua oplah.</div></div>
+          <div class="form-group"><label>Markup oplah (%) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="markup" value="100"><div class="hint" hidden>Keuntungan tambahan untuk oplah di atas 1.000 pcs &mdash; dihitung dari modal per pcs, untuk tiap pcs di atas 1.000.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wiz-nav">
+      <button class="btn-primary" id="btnNext" onclick="wizNext()">Lanjut</button>
+      <button class="btn-primary" id="btnCalc" onclick="calculate()" hidden>Hitung kalkulasi</button>
+    </div>
+  </section>
+
+  <!-- ============ LAYAR 2: HASIL (TAB) ============ -->
+  <section class="screen" id="scrHasil" hidden>
+    <div class="hasil-top">
+      <h2>Hasil kalkulasi</h2>
+      <button class="btn-edit" onclick="wizGoResultsBack()">&#8592; Ubah data</button>
+    </div>
+
+    <div class="oldprice" id="repeatBanner" hidden></div>
+
+    <div class="card" id="resPlaceholder">Hasil layout &amp; penawaran akan tampil di sini setelah kalkulasi.</div>
+
+    <div id="results" class="result-section">
+      <div class="card scoreboard">
+        <div class="sumbar">
+          <div class="sum big"><span>Total penawaran</span><b id="sTotal"></b></div>
+          <div class="sum"><span>Harga / pcs</span><b id="sUnit"></b></div>
+          <div class="sum"><span>Mata (up)</span><b id="sMata"></b></div>
+          <div class="sum"><span>Plano</span><b id="sPlano"></b></div>
+        </div>
+      </div>
+
+      <div class="tabbar" role="tablist">
+        <button id="tab-layout" class="act" onclick="setTab('layout')">Layout</button>
+        <button id="tab-rincian" onclick="setTab('rincian')">Rincian</button>
+        <button id="tab-nota" onclick="setTab('nota')">Penawaran</button>
+      </div>
+
+      <div id="pane-layout">
+        <div class="card">
+          <p class="card-title">Layout produksi</p>
+          <div class="row"><span class="lbl">Orientasi potong</span><span class="dots"></span><strong id="resStatusOrient" class="val" style="color:var(--green)"></strong></div>
+          <div class="row"><span class="lbl">Posisi gripper</span><span class="dots"></span><strong id="resGripperPos" class="val"></strong></div>
+          <div class="row"><span class="lbl">Jumlah mata (up)</span><span class="dots"></span><strong id="resMata" class="val"></strong></div>
+          <div class="row"><span class="lbl">Ukuran kertas jalan</span><span class="dots"></span><strong id="resKertasJalan" class="val"></strong></div>
+          <div class="cv-cap">Layout di mesin &mdash; ketuk untuk perbesar</div>
+          <canvas id="layoutCanvas" class="clickable" width="500" height="360" onclick="openZoom('machine')"></canvas>
+          <div class="cv-cap">Potongan kertas jalan dari plano &mdash; ketuk untuk perbesar</div>
+          <canvas id="planoCanvas" class="clickable" width="500" height="300" onclick="openZoom('plano')"></canvas>
+        </div>
+      </div>
+
+      <div id="pane-rincian" hidden>
+        <div class="card">
+          <p class="card-title t-mag">Rincian produksi</p>
+          <div id="copyArea">
+            <div class="row"><span class="lbl">Total oplah (<span id="txtInshiet"></span>)</span><span class="dots"></span><strong id="resTotalPcs" class="val"></strong></div>
+            <div class="row"><span class="lbl">Hasil potongan / plano</span><span class="dots"></span><strong id="resYield" class="val"></strong></div>
+            <div class="row"><span class="lbl">Kebutuhan plano</span><span class="dots"></span><strong id="resPlano" class="val"></strong></div>
+            <div class="row"><span class="lbl">Druk pesanan (nett)</span><span class="dots"></span><strong id="resDrukNett" class="val"></strong></div>
+            <div class="row"><span class="lbl">Druk cadangan (inshiet)</span><span class="dots"></span><strong id="resDrukExtra" class="val"></strong></div>
+            <div class="row"><span class="lbl">Total druk mesin</span><span class="dots"></span><strong id="resDrukTotal" class="val"></strong></div>
+            <div class="row"><span class="lbl">Berat per pcs</span><span class="dots"></span><strong id="resBeratPcs" class="val"></strong></div>
+            <div class="row"><span class="lbl">Berat total pesanan</span><span class="dots"></span><strong id="resBeratTotal" class="val"></strong></div>
+          </div>
+          <button class="btn-ghost" onclick="shareProduksi()">Kirim ke produksi</button>
+        </div>
+      </div>
+
+      <div id="pane-nota" hidden>
+        <div class="tearline"></div>
+        <div class="nota"><span class="cm"></span>
+          <h2>Penawaran harga</h2>
+          <div class="colorbar"><i></i><i></i><i></i><i></i></div>
+          <div class="nota-order" id="notaOrder"></div>
+          <div class="nsec">Biaya <em>internal</em></div>
+          <div class="row"><span class="lbl">Harga kertas</span><span class="dots"></span><span id="fPaper" class="val"></span></div>
+          <div class="row"><span class="lbl">Ongkos druk (<span id="txtMachineInfo"></span>)</span><span class="dots"></span><span id="fDruk" class="val"></span></div>
+          <div class="row"><span class="lbl">Ongkos potong</span><span class="dots"></span><span id="fCut" class="val"></span></div>
+          <div class="row"><span class="lbl"><b>HPP produksi (modal)</b></span><span class="dots"></span><span id="fHPP" class="val" style="font-weight:800"></span></div>
+          <div class="row" style="font-size:12px"><span class="lbl">Modal per pcs</span><span class="dots"></span><span id="fHPPUnit" class="val"></span></div>
+          <div class="hr"></div>
+          <div class="nsec">Keuntungan <em>internal</em></div>
+          <div class="row"><span class="lbl">Profit dasar</span><span class="dots"></span><span id="fProfBase" class="val"></span></div>
+          <div class="row"><span class="lbl">Markup oplah (<span id="txtMarkup"></span>%)</span><span class="dots"></span><span id="fProfMark" class="val"></span></div>
+          <div class="row"><span class="lbl"><b>Total keuntungan</b></span><span class="dots"></span><span id="fProfTotal" class="val profit-val" style="font-weight:800"></span></div>
+          <div class="hr"></div>
+          <div class="total-row"><span class="lbl">Total penawaran</span><span class="price-tag" id="fTotal"></span></div>
+          <div class="unit-row">Harga jual / pcs: <b id="fUnit"></b></div>
+          <div class="btn-row">
+            <button class="btn-ghost" onclick="shareClient()">Kirim penawaran<small>untuk client &middot; tanpa HPP</small></button>
+          </div>
+          <button class="btn-primary" onclick="openNewOrder()">&#10003; Klien ACC &mdash; jadikan order</button>
+        </div>
+
+        <div class="card" id="compareCard" style="display:none">
+          <p class="card-title t-mag">Perbandingan oplah</p>
+          <table class="ctable">
+            <thead><tr><th>Oplah</th><th>HPP/pcs</th><th>Harga/pcs</th><th>Total</th></tr></thead>
+            <tbody id="compareBody"></tbody>
+          </table>
+          <button class="btn-ghost" onclick="shareMulti()">Kirim penawaran multi-harga ke client</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LAYAR 3: PENGATURAN ============ -->
+  <section class="screen" id="scrSettings" hidden>
+    <div class="set-top">
+      <button class="wiz-back" onclick="toggleSettings()" aria-label="Kembali">&#8592;</button>
+      <h2>Pengaturan</h2>
+    </div>
+
+    <div id="settingsCard" class="card">
+      <p class="card-title t-yel">Harga &amp; parameter</p>
+
+      <h3 class="set">Mesin cetak</h3>
+      <div id="machineList"></div>
+      <button class="btn-ghost" onclick="addMachine()">Tambah mesin</button>
+
+      <h3 class="set">Jenis kertas (plano)</h3>
+      <p class="set-hint">Gramasi (gr/m²) dipakai untuk menghitung berat hasil jadi &mdash; isi 0 jika tidak perlu.</p>
+      <div class="paper-head"><span>Nama</span><span>L cm</span><span>T cm</span><span>Harga/lbr</span><span>Gramasi</span><span></span></div>
+      <div id="paperList"></div>
+      <button class="btn-ghost" onclick="addPaper()">Tambah jenis kertas</button>
+
+      <h3 class="set">Parameter lain</h3>
+      <div class="grid3">
+        <div class="form-group"><label>Ongkos potong (Rp)</label><input type="number" id="sCutCost"></div>
+        <div class="form-group"><label>Inshiet (pcs)</label><input type="number" id="sExtraPcs"></div>
+        <div class="form-group"><label>Gripper (cm)</label><input type="number" id="sGripper" step="0.1"></div>
+      </div>
+
+      <button class="btn-primary" onclick="saveSettings()">Simpan pengaturan</button>
+      <button class="btn-ghost btn-danger" onclick="resetSettings()">Reset ke default</button>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Identitas usaha</p>
+      <p class="set-hint">Tampil di kop nota PDF dan teks nota WA sebagai identitas penjual.</p>
+      <div class="form-group"><label>Nama usaha</label><input type="text" id="bizName" placeholder="cth: CV Maju Cetak" onchange="bizSave()"></div>
+      <div class="form-group"><label>Alamat</label><input type="text" id="bizAddr" placeholder="Alamat singkat" onchange="bizSave()"></div>
+      <div class="form-group"><label>Telepon / WA</label><input type="text" id="bizPhone" inputmode="tel" placeholder="08xx" onchange="bizSave()"></div>
+      <div class="form-group"><label>Logo (kop &amp; watermark nota)</label>
+        <div class="stk-row">
+          <button class="btn-ghost" style="margin:0" onclick="document.getElementById('logoFile').click()">Pilih logo</button>
+          <button class="btn-ghost" style="margin:0" id="logoDelBtn" onclick="logoDelete()" hidden>Hapus logo</button>
+        </div>
+        <input type="file" id="logoFile" accept="image/*" hidden onchange="bizLogoUpload(this.files[0])">
+        <div id="logoPrev" style="margin-top:8px"></div>
+      </div>
+      <div class="form-group"><label>Tanda tangan (opsional)</label>
+        <p class="set-hint" style="margin:0 0 6px">Tampil di blok "Hormat kami" nota PDF. Kosongkan jika mau ditandatangani manual.</p>
+        <div class="stk-row">
+          <button class="btn-ghost" style="margin:0" onclick="document.getElementById('signFile').click()">Pilih tanda tangan</button>
+          <button class="btn-ghost" style="margin:0" id="signDelBtn" onclick="signDelete()" hidden>Hapus</button>
+        </div>
+        <input type="file" id="signFile" accept="image/*" hidden onchange="signUpload(this.files[0])">
+        <div id="signPrev" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="card-title">Data &amp; backup</p>
+      <p class="set-hint">Seluruh data order, klien, dan pengaturan tersimpan hanya di perangkat ini. Ekspor rutin sebagai file JSON dan simpan ke Drive/WA sendiri. Import untuk restore atau pindah perangkat &mdash; import <b>mengganti</b> semua data yang ada.</p>
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="exportData()">Ekspor data</button>
+        <button class="btn-ghost" onclick="document.getElementById('importFile').click()">Import data</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this.files[0])">
+      <p class="set-hint" id="lastBackupInfo"></p>
+    </div>
+  </section>
+
+  <!-- ============ v27: LAYAR POS ============ -->
+  <section class="screen" id="scrOrders" hidden>
+    <div class="pos-top"><h2>Daftar order</h2><button class="btn-edit" onclick="navGo('form')">+ Order baru</button></div>
+    <div class="chiprow">
+      <button class="chip act" data-f="aktif" onclick="setOrderFilter('aktif')">Aktif</button>
+      <button class="chip" data-f="riwayat" onclick="setOrderFilter('riwayat')">Riwayat</button>
+      <button class="chip" data-f="semua" onclick="setOrderFilter('semua')">Semua</button>
+    </div>
+    <div id="orderList"></div>
+  </section>
+
+  <section class="screen" id="scrOrderDetail" hidden>
+    <div class="pos-top"><div class="grp"><button class="wiz-back" onclick="navGo('orders')" aria-label="Kembali">&#8592;</button><h2 id="odTitle">Order</h2></div></div>
+    <div id="odBody"></div>
+  </section>
+
+  <section class="screen" id="scrClients" hidden>
+    <div class="pos-top"><h2>Klien</h2></div>
+    <div class="form-group"><input type="text" id="clientSearch" placeholder="Cari nama / telepon&hellip;" oninput="renderClients()"></div>
+    <div id="clientList"></div>
+  </section>
+
+  <section class="screen" id="scrClientDetail" hidden>
+    <div class="pos-top"><div class="grp"><button class="wiz-back" onclick="navGo('clients')" aria-label="Kembali">&#8592;</button><h2 id="cdTitle">Klien</h2></div></div>
+    <div id="cdBody"></div>
+  </section>
+
+  <section class="screen" id="scrStock" hidden>
+    <div class="pos-top"><h2>Stok kertas</h2></div>
+    <p class="set-hint" style="margin:0 0 14px">Stok berkurang otomatis saat order disimpan. Catat <b>barang masuk</b> setiap beli dari pabrik. Stok minus berarti order sudah jalan tapi kertasnya belum dibeli.</p>
+    <div id="stockList"></div>
+  </section>
+
+  <section class="screen" id="scrNewOrder" hidden>
+    <div class="pos-top"><div class="grp"><button class="wiz-back" onclick="navScreen('hasil')" aria-label="Kembali">&#8592;</button><h2>Order baru</h2></div></div>
+    <div class="card">
+      <p class="card-title">Ringkasan pekerjaan</p>
+      <div id="noCalcSum" style="font-size:13.5px;color:var(--text-2);line-height:1.6"></div>
+      <div id="noStockInfo"></div>
+      <div class="oldprice" id="noOldPrice" hidden style="margin-bottom:0"></div>
+    </div>
+    <div class="card">
+      <p class="card-title t-mag">Data klien</p>
+      <div class="form-group"><label>Klien</label><select id="noClientSel" onchange="onClientSelChange()"></select></div>
+      <div class="form-group"><label>Nama</label><input type="text" id="noName" placeholder="Nama klien / instansi"></div>
+      <div class="grid">
+        <div class="form-group"><label>Telepon</label><input type="text" id="noPhone" inputmode="tel" placeholder="08xx"></div>
+        <div class="form-group"><label>Deadline</label><input type="date" id="noDeadline"></div>
+      </div>
+      <div class="form-group"><label>Alamat &mdash; opsional</label><input type="text" id="noAddr" placeholder="Alamat"></div>
+    </div>
+    <div class="card">
+      <p class="card-title t-yel">Detail order</p>
+      <div class="form-group"><label>Catatan desain / file &mdash; opsional</label><input type="text" id="noDesign" placeholder="cth: nota-toko-abc-v2.pdf &middot; plat lama rak B"></div>
+      <div class="grid">
+        <div class="form-group"><label>Harga total (Rp)</label><input type="number" id="noPrice"></div>
+        <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="noDP" placeholder="0"></div>
+      </div>
+      <button class="btn-primary" onclick="saveNewOrder()">Simpan order</button>
+    </div>
+  </section>
+</div>
+
+<div id="zoomOverlay" class="zoom-overlay" onclick="if(event.target===this)closeZoom()">
+  <div class="zoom-head">
+    <span class="zoom-title" id="zoomTitle"></span>
+    <button class="btn-close" onclick="closeZoom()" aria-label="Tutup">&#10005;</button>
+  </div>
+  <div class="zoom-body"><canvas id="zoomCanvas"></canvas></div>
+</div>
+
+<div id="helpOverlay" class="help-overlay" onclick="if(event.target===this)closeHelp()">
+  <div class="card help-card">
+    <div class="zoom-head">
+      <span class="zoom-title">Panduan pemakaian</span>
+      <button class="btn-close" onclick="closeHelp()" aria-label="Tutup">&#10005;</button>
+    </div>
+
+    <h3>Cara pakai</h3>
+    <ol>
+      <li>Langkah 1 &mdash; pilih <b>jenis mesin</b> dan <b>material plano</b> sesuai pesanan.</li>
+      <li>Langkah 2 &mdash; isi <b>ukuran potong</b> (ukuran hasil jadi, cm) dan jumlah <b>warna</b>. Tanda <b>&#9432;</b> di tiap kolom berisi penjelasan singkat.</li>
+      <li>Langkah 3 &mdash; isi <b>oplah</b> dan target profit, lalu ketuk <b>Hitung kalkulasi</b>. Untuk client yang minta beberapa opsi jumlah, isi <b>oplah pembanding</b> (pisah koma).</li>
+      <li>Hasil tampil dalam tiga tab: <b>Layout</b> (gambar posisi cetak &mdash; ketuk untuk perbesar), <b>Rincian</b> (data produksi), dan <b>Penawaran</b> (harga). Kirim hasil lewat tombol <b>Kirim ke produksi</b> atau <b>Kirim penawaran</b> (aman untuk client). Ketuk <b>Ubah data</b> untuk kembali ke form.</li>
+      <li>Daftar mesin, harga kertas, dan parameter lain diubah lewat tombol <b>Pengaturan</b>.</li>
+    </ol>
+
+    <h3>Istilah</h3>
+    <dl class="glos">
+      <dt>Plano</dt><dd>Lembar kertas besar dari supplier (mis. 75&times;100 cm).</dd>
+      <dt>Kertas jalan</dt><dd>Potongan plano yang dimasukkan ke mesin cetak.</dd>
+      <dt>Mata (up)</dt><dd>Jumlah item yang tercetak dalam satu kertas jalan.</dd>
+      <dt>Druk</dt><dd>Satu lintasan cetak untuk satu lembar kertas jalan. 2 warna = lintasan dobel.</dd>
+      <dt>Inshiet</dt><dd>Lembar cadangan pengganti hasil reject/miss cetak. Tidak ditagih ke customer.</dd>
+      <dt>Gripper</dt><dd>Tepi kertas yang dicengkeram mesin &mdash; area ini tidak bisa dicetak. Untuk ukuran maksimal mesin, gripper harus dimatikan karena akan mengambil area cetak &mdash; kalkulator akan menawarkan ini otomatis.</dd>
+      <dt>Overprint</dt><dd>Biaya druk tambahan tiap kelipatan 1.000 druk di atas 1.000 pertama.</dd>
+      <dt>Gramasi</dt><dd>Berat kertas dalam gram per meter persegi (mis. 40gr = 40 gr/m²). Dipakai menghitung berat hasil jadi.</dd>
+      <dt>HPP</dt><dd>Modal produksi (kertas + druk + potong), sebelum keuntungan.</dd>
+    </dl>
+
+    <h3>Catatan untuk tim</h3>
+    <p style="font-size:13px;color:var(--text-2);margin:0">Pengaturan tersimpan di browser perangkat masing-masing. Jika tim memakai HP/komputer berbeda, samakan pengaturan lewat menu Pengaturan di tiap perangkat saat ada perubahan.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="cfOverlay" class="help-overlay" style="z-index:70" onclick="if(event.target===this)document.getElementById('cfCancel').click()">
+  <div class="card help-card cf-card">
+    <p id="cfMsg"></p>
+    <div class="btn-row">
+      <button class="btn-ghost" id="cfCancel">Batal</button>
+      <button class="btn-primary" id="cfOk"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================= SETTINGS (editable, persisten via localStorage) =================
+const STORAGE_KEY = "printcalc_settings_v3";
+const DEFAULTS = {
+  papers: [
+    { name: "Ersat 40gr",    w: 75, h: 100, price: 1300, gsm: 40 },
+    { name: "Ersat 50gr",    w: 75, h: 100, price: 1500, gsm: 50 },
+    { name: "Dorslag 30gr",  w: 44, h: 69,  price: 250,  gsm: 30 },
+    { name: "Kertas Minyak", w: 30, h: 40,  price: 160,  gsm: 22 }
+  ],
+  machines: [
+    { name: "Mesin 52", effW: 34, effH: 51, baseCost: 100000, overCost: 35000 },
+    { name: "Mesin 72", effW: 50, effH: 71, baseCost: 170000, overCost: 52500 }
+  ],
+  cutCost: 40000,
+  extraPcs: 100,
+  gripper: 1.5
+};
+
+let SET = loadSettings();
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (s && s.machines && !Array.isArray(s.machines)) {
+      // migrasi format lama {m52:{...}, m72:{...}} -> daftar mesin bernama
+      s.machines = [
+        Object.assign({ name: "Mesin 52", effW: 34, effH: 51 }, s.machines.m52),
+        Object.assign({ name: "Mesin 72", effW: 50, effH: 71 }, s.machines.m72)
+      ].filter(m => m && m.baseCost !== undefined);
+    }
+    if (s && Array.isArray(s.papers) && s.papers.length > 0 &&
+        Array.isArray(s.machines) && s.machines.length > 0) {
+      // Migrasi: tambah gramasi (gsm) dari angka di nama kertas jika belum ada
+      for (const p of s.papers) {
+        if (p.gsm === undefined) {
+          const g = String(p.name).match(/(\d+)\s*(?:gr|gsm)/i);
+          p.gsm = g ? parseInt(g[1], 10) : 0;
+        }
+      }
+      return s;
+    }
+  } catch (e) { /* localStorage tidak tersedia / data korup -> pakai default */ }
+  return JSON.parse(JSON.stringify(DEFAULTS));
+}
+
+function persistSettings() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(SET)); return true; }
+  catch (e) { return false; }
+}
+
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;"); }
+
+function renderPaperSelect() {
+  const sel = document.getElementById("paperType");
+  const cur = sel.value;
+  sel.innerHTML = SET.papers.map((p, i) =>
+    `<option value="${i}">${esc(p.name)} (${p.w}x${p.h})</option>`).join("");
+  sel.value = (cur !== "" && SET.papers[cur]) ? cur : "0";
+}
+
+function renderMachineSelect() {
+  const sel = document.getElementById("machineType");
+  const cur = sel.value;
+  sel.innerHTML = SET.machines.map((m, i) =>
+    `<option value="${i}">${esc(m.name)} (${m.effW}×${m.effH} cm)</option>`).join("");
+  sel.value = (cur !== "" && SET.machines[cur]) ? cur : "0";
+}
+
+function renderSettings() {
+  document.getElementById("paperList").innerHTML = SET.papers.map((p, i) => `
+    <div class="paper-row">
+      <input type="text" value="${esc(p.name)}" onchange="SET.papers[${i}].name=this.value">
+      <input type="number" value="${p.w}" step="0.1" onchange="SET.papers[${i}].w=parseFloat(this.value)||0">
+      <input type="number" value="${p.h}" step="0.1" onchange="SET.papers[${i}].h=parseFloat(this.value)||0">
+      <input type="number" value="${p.price}" onchange="SET.papers[${i}].price=parseFloat(this.value)||0">
+      <input type="number" value="${p.gsm || 0}" onchange="SET.papers[${i}].gsm=parseFloat(this.value)||0">
+      <button class="btn-del" onclick="delPaper(${i})">✕</button>
+    </div>`).join("");
+  document.getElementById("machineList").innerHTML = SET.machines.map((m, i) => `
+    <div class="machine-block">
+      <div class="machine-head">
+        <input type="text" value="${esc(m.name)}" onchange="SET.machines[${i}].name=this.value">
+        <button class="btn-del" onclick="delMachine(${i})">✕</button>
+      </div>
+      <div class="machine-grid">
+        <label>Area cetak L (cm)<input type="number" value="${m.effW}" step="0.1" onchange="SET.machines[${i}].effW=parseFloat(this.value)||0"></label>
+        <label>Area cetak T (cm)<input type="number" value="${m.effH}" step="0.1" onchange="SET.machines[${i}].effH=parseFloat(this.value)||0"></label>
+        <label>Druk dasar /1000 (Rp)<input type="number" value="${m.baseCost}" onchange="SET.machines[${i}].baseCost=parseFloat(this.value)||0"></label>
+        <label>Overprint /1000 (Rp)<input type="number" value="${m.overCost}" onchange="SET.machines[${i}].overCost=parseFloat(this.value)||0"></label>
+      </div>
+    </div>`).join("");
+  document.getElementById("sCutCost").value = SET.cutCost;
+  document.getElementById("sExtraPcs").value = SET.extraPcs;
+  document.getElementById("sGripper").value = SET.gripper;
+}
+
+function toggleSettings() {
+  const c = document.getElementById("settingsCard");
+  const show = c.style.display !== "block";
+  if (show) renderSettings();
+  c.style.display = show ? "block" : "none";
+}
+
+function addPaper() {
+  SET.papers.push({ name: "Kertas Baru", w: 65, h: 100, price: 1000, gsm: 0 });
+  renderSettings();
+}
+
+function delPaper(i) {
+  if (SET.papers.length <= 1) { showToast("Minimal harus ada 1 jenis kertas", "err"); return; }
+  askConfirm(`Hapus "${SET.papers[i].name}" dari daftar kertas?`, "Hapus").then(ok => {
+    if (!ok) return;
+    SET.papers.splice(i, 1);
+    renderSettings();
+  });
+}
+
+function addMachine() {
+  SET.machines.push({ name: "Mesin Baru", effW: 45, effH: 64, baseCost: 100000, overCost: 35000 });
+  renderSettings();
+}
+
+function delMachine(i) {
+  if (SET.machines.length <= 1) { showToast("Minimal harus ada 1 mesin", "err"); return; }
+  askConfirm(`Hapus "${SET.machines[i].name}" dari daftar mesin?`, "Hapus").then(ok => {
+    if (!ok) return;
+    SET.machines.splice(i, 1);
+    renderSettings();
+    renderMachineSelect();
+  });
+}
+
+function saveSettings() {
+  SET.cutCost  = parseFloat(document.getElementById("sCutCost").value) || 0;
+  SET.extraPcs = parseInt(document.getElementById("sExtraPcs").value) || 0;
+  SET.gripper  = parseFloat(document.getElementById("sGripper").value) || 0;
+
+  for (const p of SET.papers) {
+    if (!p.name || !(p.w > 0) || !(p.h > 0) || !(p.price >= 0)) {
+      showToast("❌ Data kertas tidak valid (nama kosong / ukuran ≤ 0)", "err"); return;
+    }
+  }
+  for (const m of SET.machines) {
+    if (!m.name || !(m.effW > 0) || !(m.effH > 0) || !(m.baseCost >= 0) || !(m.overCost >= 0)) {
+      showToast("❌ Data mesin tidak valid (nama kosong / area ≤ 0)", "err"); return;
+    }
+  }
+
+  const ok = persistSettings();
+  renderPaperSelect();
+  renderMachineSelect();
+  document.getElementById("settingsCard").style.display = "none";
+  showToast(ok ? "✅ Pengaturan tersimpan" : "⚠️ Tersimpan untuk sesi ini saja", ok ? "" : "err");
+}
+
+function resetSettings() {
+  askConfirm("Kembalikan semua harga & parameter ke default?", "Reset").then(ok => {
+    if (!ok) return;
+    SET = JSON.parse(JSON.stringify(DEFAULTS));
+    persistSettings();
+    renderSettings();
+    renderPaperSelect();
+    renderMachineSelect();
+    showToast("↺ Pengaturan kembali ke default");
+  });
+}
+
+// ================= KALKULASI =================
+let planoW = 75, planoH = 100, priceP = 1300;
+let machineEffW = 50, machineEffH = 70;
+let baseCost = 160000, overCost = 50000;
+let gripReminderOff = false; // reminder gripper: aktif lagi setelah toggle manual / auto-disable
+let lastCalc = null;         // snapshot hasil kalkulasi terakhir untuk fitur kirim
+
+// ================= KIRIM PER AUDIENS =================
+const rp = n => "Rp " + Math.round(n).toLocaleString("id-ID");
+
+const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+function shareText(text) {
+  // HP: share sheet (pilih WA -> pilih kontak). Desktop: salin teks terformat, tinggal paste di WA.
+  if (IS_MOBILE && navigator.share) {
+    navigator.share({ text }).catch(() => {});
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text)
+      .then(() => showToast("📋 Pesan tersalin — tinggal paste di WhatsApp"))
+      .catch(() => fallbackCopy(text, "📋 Pesan tersalin — tinggal paste di WhatsApp"));
+  } else {
+    fallbackCopy(text, "📋 Pesan tersalin — tinggal paste di WhatsApp");
+  }
+}
+
+function shareProduksi() {
+  if (!lastCalc) return;
+  const c = lastCalc;
+  shareText(
+`🖨️ *SPK PRODUKSI*
+━━━━━━━━━━━━━━
+Mesin: ${c.mName}
+Kertas: ${c.paper}
+Ukuran potong: ${c.pW} × ${c.pH} cm (${c.orient})
+Warna: ${c.colorCount}
+Gripper: ${c.gripper}
+
+Layout: *${c.mata} mata (up)*
+Kertas jalan: ${c.kW.toFixed(1)} × ${c.kH.toFixed(1)} cm
+Potongan/plano: ${c.yieldPcs} pcs
+
+Oplah: ${c.qty.toLocaleString("id-ID")} + ${c.extraPcs} inshiet
+Kebutuhan plano: *${c.totalPlano.toLocaleString("id-ID")} lembar*
+Druk nett: ${c.drukNett.toLocaleString("id-ID")}
+Druk total: *${c.drukTotal.toLocaleString("id-ID")}*`);
+}
+
+
+function shareClient() {
+  if (!lastCalc) return;
+  const c = lastCalc;
+  shareText(
+`🧾 *PENAWARAN HARGA*
+━━━━━━━━━━━━━━
+Item: Cetak ${c.pW} × ${c.pH} cm, ${c.colorCount} warna
+Bahan: ${c.paper.split(" (")[0]}
+Jumlah: ${c.qty.toLocaleString("id-ID")} pcs
+━━━━━━━━━━━━━━
+*Total: ${rp(c.totalOffer)}*
+Harga satuan: ${rp(c.totalOffer / c.qty)}/pcs
+
+Harga sudah termasuk bahan, cetak & potong.`);
+}
+
+
+function updateData() {
+  const p = SET.papers[parseInt(document.getElementById("paperType").value)] || SET.papers[0];
+  planoW = p.w; planoH = p.h; priceP = p.price;
+  const m = SET.machines[parseInt(document.getElementById("machineType").value)] || SET.machines[0];
+  machineEffW = m.effW; machineEffH = m.effH; baseCost = m.baseCost; overCost = m.overCost;
+}
+
+// Floor dengan toleransi floating-point (mis. 100/33.333 = 2.99999... harus dihitung 3)
+const EPS = 1e-9;
+function fdiv(a, b) { return Math.floor(a / b + EPS); }
+
+function getScenario(pW, pH, gOnLongSide, gSize) {
+  let uW = gOnLongSide ? machineEffW : (machineEffW - gSize);
+  let uH = gOnLongSide ? (machineEffH - gSize) : machineEffH;
+  if (pW > uW + EPS || pH > uH + EPS) return null;
+
+  let mata = fdiv(uW, pW) * fdiv(uH, pH);
+  if (mata === 0) return null;
+
+  let kJalanW = fdiv(uW, pW) * pW + (gOnLongSide ? 0 : gSize);
+  let kJalanH = fdiv(uH, pH) * pH + (gOnLongSide ? gSize : 0);
+
+  let y1 = fdiv(planoW, kJalanW) * fdiv(planoH, kJalanH);
+  let y2 = fdiv(planoW, kJalanH) * fdiv(planoH, kJalanW);
+  let yieldPlano = Math.max(y1, y2);
+
+  if (yieldPlano === 0) return null;
+  // Orientasi kertas jalan di plano (untuk visual): rot = kertas jalan diputar 90°
+  const rot = y2 > y1;
+  const tileW = rot ? kJalanH : kJalanW, tileH = rot ? kJalanW : kJalanH;
+  const pCols = fdiv(planoW, tileW), pRows = fdiv(planoH, tileH);
+  return { mata, yieldPlano, kJalanW, kJalanH, pW, pH, gOnLongSide, totalPcsPerPlano: mata * yieldPlano,
+           tileW, tileH, pCols, pRows };
+}
+
+// ---------- Toast & dialog konfirmasi custom ----------
+function showToast(msg, type) {
+  const t = document.getElementById("toast");
+  t.innerText = msg;
+  t.className = "toast show" + (type === "err" ? " err" : "");
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(() => { t.className = "toast"; }, 2800);
+}
+
+function askConfirm(msg, okLabel) {
+  return new Promise(resolve => {
+    document.getElementById("cfMsg").innerText = msg;
+    document.getElementById("cfOk").innerText = okLabel || "OK";
+    const ov = document.getElementById("cfOverlay");
+    ov.classList.add("open");
+    const done = v => { ov.classList.remove("open"); resolve(v); };
+    document.getElementById("cfOk").onclick = () => done(true);
+    document.getElementById("cfCancel").onclick = () => done(false);
+  });
+}
+
+// ---------- Validasi inline ----------
+function markErr(id, msg) {
+  const el = document.getElementById(id);
+  el.classList.add("err");
+  const g = el.closest(".form-group");
+  if (g && !g.querySelector(".ferr")) {
+    const d = document.createElement("div");
+    d.className = "ferr"; d.innerText = msg;
+    g.appendChild(d);
+  }
+}
+function clearErr(id) {
+  const el = document.getElementById(id);
+  el.classList.remove("err");
+  const g = el.closest(".form-group");
+  const f = g && g.querySelector(".ferr");
+  if (f) f.remove();
+}
+["pW", "pH", "qty", "qtyAlt"].forEach(id =>
+  document.getElementById(id).addEventListener("input", () => clearErr(id)));
+
+// ---------- Kalkulasi inti (murni, per oplah) ----------
+function quoteFor(scenarios, qty, colorCount, bProf, mPct) {
+  const scenarioCost = (s) => {
+    const tot = qty + SET.extraPcs;
+    const dN = Math.ceil(qty / s.mata);
+    const plano = Math.ceil(tot / s.totalPcsPerPlano);
+    const over = Math.max(0, Math.floor((dN - 1) / 1000));
+    return plano * priceP + (baseCost + over * overCost) * colorCount + SET.cutCost;
+  };
+  // Pilih skenario dengan BIAYA TOTAL termurah — bisa berbeda antar oplah karena overprint ikut drukNett
+  const sorted = [...scenarios].sort((a, b) =>
+    scenarioCost(a) - scenarioCost(b) || b.totalPcsPerPlano - a.totalPcsPerPlano || b.mata - a.mata);
+  const best = sorted[0];
+
+  const totalQtyProd = qty + SET.extraPcs;
+  const drukNett = Math.ceil(qty / best.mata);
+  const drukTotal = Math.ceil(totalQtyProd / best.mata);
+  const totalPlano = Math.ceil(totalQtyProd / best.totalPcsPerPlano);
+  // Overprint dari drukNett (pesanan bersih) — inshiet adalah cadangan reject, tidak ditagih over.
+  const extraDruk = Math.max(0, Math.floor((drukNett - 1) / 1000));
+  const costPaper = totalPlano * priceP;
+  const costDruk = (baseCost + (extraDruk * overCost)) * colorCount;
+  const hppTotal = costPaper + costDruk + SET.cutCost;
+  const hppPerUnit = hppTotal / qty;
+  const profitMarkup = (qty > 1000) ? (qty - 1000) * hppPerUnit * (mPct / 100) : 0;
+  const totalProfit = bProf + profitMarkup;
+  const totalOffer = hppTotal + totalProfit;
+  return { best, qty, totalQtyProd, drukNett, drukTotal, totalPlano, extraDruk,
+           costPaper, costDruk, hppTotal, hppPerUnit, profitMarkup, totalProfit, totalOffer };
+}
+
+function parseAlts(qty) {
+  const raw = document.getElementById("qtyAlt").value.trim();
+  if (!raw) return [];
+  const list = raw.split(/[,;\s]+/).map(s => parseInt(s, 10)).filter(n => n > 0 && n !== qty);
+  return [...new Set(list)].slice(0, 5);
+}
+
+// ---------- Gerbang: validasi + dialog gripper, lalu doCalculate ----------
+function calculate() {
+  updateData();
+  ["pW", "pH", "qty"].forEach(clearErr);
+  const pW = parseFloat(document.getElementById("pW").value);
+  const pH = parseFloat(document.getElementById("pH").value);
+  const qty = parseInt(document.getElementById("qty").value);
+
+  let bad = false;
+  if (!(pW > 0)) { markErr("pW", "Harus lebih dari 0"); bad = true; }
+  if (!(pH > 0)) { markErr("pH", "Harus lebih dari 0"); bad = true; }
+  if (!(qty > 0)) { markErr("qty", "Oplah harus lebih dari 0"); bad = true; }
+  if (bad) { showToast("Periksa kolom bertanda merah", "err"); return; }
+
+  const gOn = document.getElementById("useGripper").checked;
+  const gSize = gOn ? SET.gripper : 0;
+  const buildScenarios = (g) => [
+    getScenario(pW, pH, true, g), getScenario(pW, pH, false, g),
+    getScenario(pH, pW, true, g), getScenario(pH, pW, false, g)
+  ].filter(s => s !== null);
+
+  const scenarios = buildScenarios(gSize);
+
+  // Reminder: gripper mati padahal ukuran ini muat dengan gripper aktif
+  if (!gOn && scenarios.length > 0 && !gripReminderOff && buildScenarios(SET.gripper).length > 0) {
+    askConfirm(
+      "⚠️ Gripper sedang MATI.\n\nUkuran ini muat dengan gripper aktif. Untuk cetak offset, gripper sebaiknya dinyalakan (kecuali sengaja dimatikan).\n\nNyalakan gripper dan hitung ulang?",
+      "Nyalakan gripper"
+    ).then(ok => {
+      if (ok) { document.getElementById("useGripper").checked = true; calculate(); }
+      else { gripReminderOff = true; doCalculate(pW, pH, qty, scenarios, false); }
+    });
+    return;
+  }
+
+  if (scenarios.length === 0) {
+    // Kasus ukuran maksimal: muat tanpa gripper — normal, gripper mengambil area cetak.
+    if (gOn && buildScenarios(0).length > 0) {
+      askConfirm(
+        "⚠️ Ukuran ini memakai area maksimal mesin.\n\nDengan gripper aktif, area cengkeraman (" + SET.gripper + " cm) mengambil area cetak sehingga tidak muat — ini normal untuk ukuran maksimal.\n\nMatikan gripper dan hitung ulang?",
+        "Matikan gripper"
+      ).then(ok => {
+        if (ok) {
+          document.getElementById("useGripper").checked = false;
+          gripReminderOff = false;
+          calculate();
+        }
+      });
+      return;
+    }
+    showToast("❌ Ukuran tidak muat di mesin ini", "err");
+    return;
+  }
+
+  doCalculate(pW, pH, qty, scenarios, gOn);
+}
+
+let lastAlts = null;
+
+function doCalculate(pW, pH, qty, scenarios, gOn) {
+  const colorCount = parseInt(document.getElementById("colors").value);
+  const bProf = parseInt(document.getElementById("baseProfit").value) || 0;
+  const mPct = parseFloat(document.getElementById("markup").value) || 0;
+
+  const q = quoteFor(scenarios, qty, colorCount, bProf, mPct);
+  const best = q.best;
+
+  // Snapshot untuk fitur kirim/share per audiens
+  const mSel = SET.machines[parseInt(document.getElementById("machineType").value)] || SET.machines[0];
+  const mName = `${mSel.name} (${mSel.effW}×${mSel.effH})`;
+  const pSel = SET.papers[parseInt(document.getElementById("paperType").value)] || SET.papers[0];
+  lastCalc = {
+    mName, paper: `${pSel.name} (${pSel.w}×${pSel.h})`,
+    pW, pH, qty, colorCount,
+    gripper: gOn ? `AKTIF ${SET.gripper} cm (${best.gOnLongSide ? "sisi panjang" : "sisi pendek"})` : "MATI",
+    orient: (best.pW === pW) ? "tegak" : "diputar 90°",
+    mata: best.mata, kW: best.kJalanW, kH: best.kJalanH,
+    yieldPcs: best.totalPcsPerPlano, extraPcs: SET.extraPcs,
+    totalPlano: q.totalPlano, drukNett: q.drukNett, drukTotal: q.drukTotal,
+    costPaper: q.costPaper, costDruk: q.costDruk, cutCost: SET.cutCost,
+    hppTotal: q.hppTotal, hppPerUnit: q.hppPerUnit,
+    totalProfit: q.totalProfit, totalOffer: q.totalOffer
+  };
+
+  // Perbandingan oplah
+  const alts = parseAlts(qty);
+  lastAlts = [q, ...alts.map(a => quoteFor(scenarios, a, colorCount, bProf, mPct))]
+    .sort((a, b) => a.qty - b.qty);
+  renderCompare(lastAlts, qty, alts.length > 0);
+
+  // Tampilkan Hasil
+  document.getElementById("sTotal").innerText = "Rp " + Math.round(q.totalOffer).toLocaleString();
+  document.getElementById("sUnit").innerText = "Rp " + Math.round(q.totalOffer / qty).toLocaleString();
+  document.getElementById("sMata").innerText = best.mata;
+  document.getElementById("sPlano").innerText = q.totalPlano.toLocaleString() + " lbr";
+  document.getElementById("resPlaceholder").style.display = "none";
+  const res = document.getElementById("results");
+  res.style.display = "block"; res.classList.remove("show"); void res.offsetWidth; res.classList.add("show");
+  document.getElementById("resStatusOrient").innerText = (best.pW === pW) ? "Tegak (optimal)" : "Diputar (optimal) 🔄";
+  document.getElementById("resGripperPos").innerText = best.gOnLongSide ? "Sisi panjang mesin" : "Sisi pendek mesin";
+  document.getElementById("resMata").innerText = best.mata + " mata (up)";
+  document.getElementById("resKertasJalan").innerText = best.kJalanW.toFixed(1) + " × " + best.kJalanH.toFixed(1) + " cm";
+  document.getElementById("txtInshiet").innerText = "+" + SET.extraPcs + " pcs";
+  document.getElementById("resYield").innerText = best.totalPcsPerPlano + " pcs / plano";
+  document.getElementById("resTotalPcs").innerText = q.totalQtyProd.toLocaleString() + " pcs";
+  document.getElementById("resPlano").innerText = q.totalPlano.toLocaleString() + " lembar";
+  document.getElementById("resDrukNett").innerText = q.drukNett.toLocaleString() + " lembar";
+  document.getElementById("resDrukExtra").innerText = (q.drukTotal - q.drukNett).toLocaleString() + " lembar";
+  document.getElementById("resDrukTotal").innerText = q.drukTotal.toLocaleString() + " lembar";
+
+  // Berat hasil jadi: gramasi (gr/m²) × luas potongan — waste tidak ikut terhitung
+  const gsm = pSel.gsm || 0;
+  if (gsm > 0) {
+    const beratPcs = gsm * (pW * pH) / 10000;            // gram per pcs
+    const beratTotal = beratPcs * qty;                   // gram, oplah pesanan (tanpa inshiet)
+    const fmtBerat = g => g >= 1000
+      ? (g / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " kg"
+      : g.toLocaleString("id-ID", { maximumFractionDigits: 2 }) + " g";
+    document.getElementById("resBeratPcs").innerText = fmtBerat(beratPcs);
+    document.getElementById("resBeratTotal").innerText = fmtBerat(beratTotal) + ` (${qty.toLocaleString("id-ID")} pcs)`;
+  } else {
+    document.getElementById("resBeratPcs").innerText = "—";
+    document.getElementById("resBeratTotal").innerText = "— (isi gramasi di Pengaturan)";
+  }
+
+  document.getElementById("notaOrder").innerText =
+    `Cetak ${pW} × ${pH} cm · ${colorCount} warna · ${qty.toLocaleString("id-ID")} pcs`;
+  document.getElementById("fPaper").innerText = "Rp " + q.costPaper.toLocaleString();
+  document.getElementById("fDruk").innerText = "Rp " + q.costDruk.toLocaleString();
+  document.getElementById("txtMachineInfo").innerText = (SET.machines[parseInt(document.getElementById("machineType").value)] || SET.machines[0]).name + (q.extraDruk > 0 ? ` + ${q.extraDruk}rb over` : "");
+  document.getElementById("fCut").innerText = "Rp " + SET.cutCost.toLocaleString();
+  document.getElementById("fHPP").innerText = "Rp " + Math.round(q.hppTotal).toLocaleString();
+  document.getElementById("fHPPUnit").innerText = "Rp " + Math.round(q.hppPerUnit).toLocaleString();
+  document.getElementById("fProfBase").innerText = "Rp " + bProf.toLocaleString();
+  document.getElementById("fProfMark").innerText = "Rp " + Math.round(q.profitMarkup).toLocaleString();
+  document.getElementById("txtMarkup").innerText = mPct;
+  document.getElementById("fTotal").innerText = "Rp " + Math.round(q.totalOffer).toLocaleString();
+  document.getElementById("fUnit").innerText = "Rp " + Math.round(q.totalOffer / qty).toLocaleString();
+  document.getElementById("fProfTotal").innerText = "Rp " + Math.round(q.totalProfit).toLocaleString();
+
+  drawLayout(best);
+
+  // Ingat mesin & kertas terakhir yang dipakai
+  try {
+    localStorage.setItem("printcalc_lastsel", JSON.stringify({
+      m: parseInt(document.getElementById("machineType").value) || 0,
+      p: parseInt(document.getElementById("paperType").value) || 0
+    }));
+  } catch (e) { /* localStorage tidak tersedia */ }
+
+  // Auto-scroll ke ringkasan (hanya layout 1 kolom / HP)
+  if (window.innerWidth < 980) {
+    const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setTimeout(() => res.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" }), 60);
+  }
+}
+
+function renderCompare(quotes, primaryQty, show) {
+  const card = document.getElementById("compareCard");
+  if (!show) { card.style.display = "none"; return; }
+  document.getElementById("compareBody").innerHTML = quotes.map(x => `
+    <tr class="${x.qty === primaryQty ? "cur" : ""}">
+      <td>${x.qty.toLocaleString("id-ID")} pcs</td>
+      <td>${rp(x.hppPerUnit)}</td>
+      <td>${rp(x.totalOffer / x.qty)}</td>
+      <td><b>${rp(x.totalOffer)}</b></td>
+    </tr>`).join("");
+  card.style.display = "block";
+}
+
+function shareMulti() {
+  if (!lastCalc || !lastAlts || lastAlts.length === 0) return;
+  const c = lastCalc;
+  const lines = lastAlts.map(x =>
+    `• ${x.qty.toLocaleString("id-ID")} pcs: *${rp(x.totalOffer)}* (${rp(x.totalOffer / x.qty)}/pcs)`).join("\n");
+  shareText(
+`🧾 *PENAWARAN HARGA*
+━━━━━━━━━━━━━━
+Item: Cetak ${c.pW} × ${c.pH} cm, ${c.colorCount} warna
+Bahan: ${c.paper.split(" (")[0]}
+━━━━━━━━━━━━━━
+${lines}
+
+Harga sudah termasuk bahan, cetak & potong.`);
+}
+
+// ================= VISUALISASI (animasi sekali jalan, hormati reduced-motion) =================
+const MONO = "ui-monospace, 'SF Mono', 'Roboto Mono', Menlo, Consolas, monospace";
+const ease = t => 1 - Math.pow(1 - t, 3);
+const seg = (t, a, b) => Math.max(0, Math.min(1, (t - a) / (b - a)));
+let animId = null;
+
+function setupCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const parentW = canvas.parentElement.clientWidth || 500;
+  const cssW = Math.min(500, parentW - 2);
+  const cssH = Math.round(parseInt(canvas.getAttribute("height")) * (cssW / 500));
+  canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
+  canvas.width = Math.round(cssW * dpr); canvas.height = Math.round(cssH * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, W: cssW, H: cssH };
+}
+
+let lastBest = null, lastG = 0;
+
+function drawLayout(best) {
+  if (animId) cancelAnimationFrame(animId);
+  const mc = setupCanvas(document.getElementById("layoutCanvas"));
+  const pc = setupCanvas(document.getElementById("planoCanvas"));
+  const gSize = document.getElementById("useGripper").checked ? SET.gripper : 0;
+  lastBest = best; lastG = gSize;
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dur = 900, start = performance.now();
+  function frame(now) {
+    const t = reduced ? 1 : Math.min(1, (now - start) / dur);
+    renderMachine(mc.ctx, mc.W, mc.H, best, gSize, t);
+    renderPlano(pc.ctx, pc.W, pc.H, best, t);
+    if (t < 1) animId = requestAnimationFrame(frame);
+  }
+  animId = requestAnimationFrame(frame);
+}
+
+function renderMachine(ctx, W, H, best, gSize, t) {
+  ctx.clearRect(0, 0, W, H);
+  const uz = Math.max(1, Math.min(2.2, Math.sqrt(W * H) / 424));
+  const pad = 30 * uz;
+  const scale = Math.min((W - 2 * pad) / machineEffW, (H - 2 * pad) / machineEffH);
+  const mw = machineEffW * scale, mh = machineEffH * scale;
+  const oX = (W - mw) / 2, oY = (H - mh) / 2;
+  const gpx = gSize * scale;
+  const cols = fdiv(best.gOnLongSide ? machineEffW : (machineEffW - gSize), best.pW);
+  const rows = fdiv(best.gOnLongSide ? (machineEffH - gSize) : machineEffH, best.pH);
+  const startX = best.gOnLongSide ? oX : oX + gpx;
+  const pw = best.pW * scale, ph = best.pH * scale;
+
+  // 1) Area maksimal mesin (dashed)
+  ctx.globalAlpha = ease(seg(t, 0, 0.25));
+  ctx.strokeStyle = "#9aa3b2"; ctx.lineWidth = uz; ctx.setLineDash([5 * uz, 5 * uz]);
+  ctx.strokeRect(oX, oY, mw, mh); ctx.setLineDash([]);
+  ctx.fillStyle = "#64748b"; ctx.font = Math.round(10 * uz) + "px " + MONO; ctx.textAlign = "left";
+  ctx.fillText(`AREA MESIN ${machineEffW} × ${machineEffH} cm`, oX, oY - 8 * uz);
+
+  // 2) Band gripper — menempel pada grid (posisi sebenarnya di kertas jalan)
+  const aG = ease(seg(t, 0.12, 0.35));
+  if (gSize > 0) {
+    ctx.globalAlpha = aG;
+    ctx.fillStyle = "rgba(217,119,6,0.18)";
+    ctx.strokeStyle = "rgba(217,119,6,0.6)";
+    if (best.gOnLongSide) {
+      const gy = oY + rows * ph;
+      ctx.fillRect(oX, gy, cols * pw, gpx * aG);
+      ctx.strokeRect(oX, gy, cols * pw, gpx * aG);
+    } else {
+      ctx.fillRect(oX, oY, gpx * aG, rows * ph);
+      ctx.strokeRect(oX, oY, gpx * aG, rows * ph);
+    }
+  }
+
+  // 3) Mata muncul berurutan
+  const n = cols * rows;
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / cols), c = i % cols;
+    const s0 = 0.28 + 0.5 * (i / Math.max(1, n));
+    const a = ease(seg(t, s0, s0 + 0.15));
+    if (a <= 0) continue;
+    const x = startX + c * pw, y = oY + r * ph;
+    const cx = x + pw / 2, cy = y + ph / 2, k = 0.7 + 0.3 * a;
+    const w2 = pw * k, h2 = ph * k;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "rgba(8,145,178,0.08)";
+    ctx.fillRect(cx - w2 / 2, cy - h2 / 2, w2, h2);
+    ctx.strokeStyle = "#0891b2"; ctx.lineWidth = 1.2 * uz;
+    ctx.strokeRect(cx - w2 / 2, cy - h2 / 2, w2, h2);
+    if (pw > 22 && ph > 18) {
+      ctx.fillStyle = "rgba(28,36,52,0.92)";
+      ctx.font = "bold " + Math.round(12 * uz) + "px " + MONO; ctx.textAlign = "center";
+      ctx.fillText(i + 1, cx, cy + 4 * uz);
+      if (i === 0 && ph > 34) {
+        ctx.fillStyle = "rgba(100,116,139,0.95)"; ctx.font = Math.round(9 * uz) + "px " + MONO;
+        ctx.fillText(`${best.pW}×${best.pH}`, cx, cy + 17 * uz);
+      }
+    }
+  }
+
+  // 4) Garis & label kertas jalan + label gripper
+  const aL = ease(seg(t, 0.8, 1));
+  ctx.globalAlpha = aL;
+  const kjW = best.kJalanW * scale, kjH = best.kJalanH * scale;
+  ctx.strokeStyle = "rgba(219,39,119,0.8)"; ctx.lineWidth = uz; ctx.setLineDash([3 * uz, 3 * uz]);
+  ctx.strokeRect(oX - 2 * uz, oY - 2 * uz, kjW + 4 * uz, kjH + 4 * uz); ctx.setLineDash([]);
+  ctx.fillStyle = "#db2777"; ctx.font = Math.round(10 * uz) + "px " + MONO; ctx.textAlign = "left";
+  ctx.fillText(`KERTAS JALAN ${best.kJalanW.toFixed(1)} × ${best.kJalanH.toFixed(1)} cm`, oX, oY + kjH + 16 * uz);
+  if (gSize > 0) {
+    ctx.fillStyle = "#b45309"; ctx.font = Math.round(9 * uz) + "px " + MONO;
+    if (best.gOnLongSide) {
+      ctx.textAlign = "center";
+      const gy = oY + rows * ph;
+      ctx.fillText("GRIPPER " + gSize + " cm", oX + (cols * pw) / 2, gy + Math.max(gpx / 2 + 3 * uz, 9 * uz));
+    } else {
+      ctx.save(); ctx.translate(oX + Math.max(gpx / 2 + 3 * uz, 9 * uz), oY + (rows * ph) / 2);
+      ctx.rotate(-Math.PI / 2); ctx.textAlign = "center";
+      ctx.fillText("GRIPPER " + gSize + " cm", 0, 3 * uz); ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+function renderPlano(ctx, W, H, best, t) {
+  ctx.clearRect(0, 0, W, H);
+  const uz = Math.max(1, Math.min(2.2, Math.sqrt(W * H) / 388));
+  const pad = 30 * uz;
+  const scale = Math.min((W - 2 * pad) / planoW, (H - 2 * pad) / planoH);
+  const pw = planoW * scale, ph = planoH * scale;
+  const oX = (W - pw) / 2, oY = (H - ph) / 2;
+
+  // 1) Plano + arsir area sisa
+  ctx.globalAlpha = ease(seg(t, 0, 0.25));
+  ctx.fillStyle = "#f8fafc"; ctx.fillRect(oX, oY, pw, ph);
+  ctx.save(); ctx.beginPath(); ctx.rect(oX, oY, pw, ph); ctx.clip();
+  ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = uz;
+  for (let d = -ph; d < pw; d += 9 * uz) {
+    ctx.beginPath(); ctx.moveTo(oX + d, oY); ctx.lineTo(oX + d + ph, oY + ph); ctx.stroke();
+  }
+  ctx.restore();
+  ctx.strokeStyle = "#94a3b8"; ctx.lineWidth = uz; ctx.strokeRect(oX, oY, pw, ph);
+  ctx.fillStyle = "#64748b"; ctx.font = Math.round(10 * uz) + "px " + MONO; ctx.textAlign = "left";
+  ctx.fillText(`PLANO ${planoW} × ${planoH} cm`, oX, oY - 8 * uz);
+
+  // 2) Tile kertas jalan muncul berurutan
+  const tw = best.tileW * scale, th = best.tileH * scale;
+  const n = best.pCols * best.pRows;
+  for (let i = 0; i < n; i++) {
+    const r = Math.floor(i / best.pCols), c = i % best.pCols;
+    const s0 = 0.25 + 0.55 * (i / Math.max(1, n));
+    const a = ease(seg(t, s0, s0 + 0.18));
+    if (a <= 0) continue;
+    const x = oX + c * tw, y = oY + r * th;
+    const cx = x + tw / 2, cy = y + th / 2, k = 0.75 + 0.25 * a;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(cx - tw * k / 2, cy - th * k / 2, tw * k, th * k);
+    ctx.strokeStyle = "#db2777"; ctx.lineWidth = 1.2 * uz;
+    ctx.strokeRect(cx - tw * k / 2, cy - th * k / 2, tw * k, th * k);
+    if (tw > 26 && th > 20) {
+      ctx.fillStyle = "rgba(28,36,52,0.92)";
+      ctx.font = "bold " + Math.round(12 * uz) + "px " + MONO; ctx.textAlign = "center";
+      ctx.fillText(i + 1, cx, cy + 4 * uz);
+      if (i === 0 && th > 36) {
+        ctx.fillStyle = "rgba(100,116,139,0.95)"; ctx.font = Math.round(9 * uz) + "px " + MONO;
+        ctx.fillText(`${best.tileW.toFixed(1)}×${best.tileH.toFixed(1)}`, cx, cy + 17 * uz);
+      }
+    }
+  }
+
+  // 3) Keterangan hasil
+  ctx.globalAlpha = ease(seg(t, 0.85, 1));
+  ctx.fillStyle = "#db2777"; ctx.font = Math.round(10 * uz) + "px " + MONO; ctx.textAlign = "right";
+  ctx.fillText(`${best.yieldPlano} KERTAS JALAN / PLANO · ${best.totalPcsPerPlano} PCS`, oX + pw, oY + ph + 16 * uz);
+  ctx.globalAlpha = 1; ctx.textAlign = "left";
+}
+
+// ================= MODAL ZOOM =================
+let zoomAnimId = null, zoomWhich = null;
+
+function openZoom(which) {
+  if (!lastBest) return;
+  zoomWhich = which;
+  document.getElementById("zoomTitle").innerText =
+    which === "machine" ? "Layout di mesin" : "Potongan kertas jalan dari plano";
+  document.getElementById("zoomOverlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+  requestAnimationFrame(runZoom);
+}
+
+function runZoom() {
+  const ov = document.getElementById("zoomOverlay");
+  if (!ov.classList.contains("open") || !lastBest) return;
+  const canvas = document.getElementById("zoomCanvas");
+  const dpr = window.devicePixelRatio || 1;
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const dur = 900, start = performance.now();
+  if (zoomAnimId) cancelAnimationFrame(zoomAnimId);
+  function frame(now) {
+    const t = reduced ? 1 : Math.min(1, (now - start) / dur);
+    if (zoomWhich === "machine") renderMachine(ctx, r.width, r.height, lastBest, lastG, t);
+    else renderPlano(ctx, r.width, r.height, lastBest, t);
+    if (t < 1 && ov.classList.contains("open")) zoomAnimId = requestAnimationFrame(frame);
+  }
+  zoomAnimId = requestAnimationFrame(frame);
+}
+
+function closeZoom() {
+  document.getElementById("zoomOverlay").classList.remove("open");
+  document.body.style.overflow = "";
+  if (zoomAnimId) cancelAnimationFrame(zoomAnimId);
+}
+
+// ================= PANDUAN & TIP =================
+function toggleTip(btn) {
+  const g = btn.closest(".form-group") || btn.closest(".opt-group");
+  const h = g ? g.querySelector(".hint") : null;
+  if (h) { h.hidden = !h.hidden; btn.classList.toggle("on", !h.hidden); }
+}
+
+function openHelp() {
+  document.getElementById("helpOverlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+function closeHelp() {
+  document.getElementById("helpOverlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  const cf = document.getElementById("cfOverlay");
+  if (cf.classList.contains("open")) { document.getElementById("cfCancel").click(); return; }
+  closeZoom(); closeHelp();
+});
+window.addEventListener("resize", () => {
+  if (document.getElementById("zoomOverlay").classList.contains("open")) runZoom();
+});
+
+function fallbackCopy(t, okMsg) {
+  const ta = document.createElement("textarea");
+  ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try { document.execCommand("copy"); showToast(okMsg || "📋 Data disalin"); }
+  catch (e) { showToast("⚠️ Gagal menyalin — salin manual dari layar", "err"); }
+  document.body.removeChild(ta);
+}
+
+// Init
+renderPaperSelect();
+renderMachineSelect();
+try {
+  const ls = JSON.parse(localStorage.getItem("printcalc_lastsel"));
+  if (ls) {
+    if (SET.machines[ls.m]) document.getElementById("machineType").value = String(ls.m);
+    if (SET.papers[ls.p])  document.getElementById("paperType").value  = String(ls.p);
+  }
+} catch (e) { /* abaikan */ }
+</script>
+<script>
+// ================= LAPISAN NAVIGASI v26 (adaptif: wizard di HP, workbench di desktop) =================
+// Membungkus fungsi inti tanpa mengubahnya. Logika kalkulasi tetap utuh.
+(function () {
+  const SCREENS = {
+    form: "scrForm", hasil: "scrHasil", settings: "scrSettings",
+    orders: "scrOrders", odetail: "scrOrderDetail",
+    clients: "scrClients", cdetail: "scrClientDetail", norder: "scrNewOrder",
+    stock: "scrStock"
+  };
+  let current = "form", beforeSettings = "form";
+  const mq = (window.matchMedia && window.matchMedia("(min-width: 980px)")) || { matches: false };
+  const isWB = () => mq.matches;
+
+  function showScreen(name) {
+    if (name === "settings" && current !== "settings") beforeSettings = current;
+    current = name;
+    if (isWB() && (name === "form" || name === "hasil")) {
+      // Workbench: form & hasil tampil berdampingan; layar lain disembunyikan
+      for (const k in SCREENS) document.getElementById(SCREENS[k]).hidden = !(k === "form" || k === "hasil");
+    } else {
+      for (const k in SCREENS) document.getElementById(SCREENS[k]).hidden = (k !== name);
+    }
+    window.scrollTo(0, 0);
+    if (window.onScreenChange) window.onScreenChange(name);
+  }
+  window.navScreen = showScreen;
+
+  const STEPS = 3;
+  let step = 1;
+  function showStep(n) {
+    step = Math.max(1, Math.min(STEPS, n));
+    if (isWB()) return; // workbench: semua langkah tampil, tak ada navigasi
+    for (let i = 1; i <= STEPS; i++) {
+      document.getElementById("step" + i).hidden = (i !== step);
+      const d = document.getElementById("dot" + i);
+      d.classList.toggle("done", i < step);
+      d.classList.toggle("act", i === step);
+    }
+    document.getElementById("wizCount").innerText = step + " / " + STEPS;
+    document.getElementById("btnBack").style.visibility = (step === 1) ? "hidden" : "visible";
+    document.getElementById("btnNext").hidden = (step === STEPS);
+    document.getElementById("btnCalc").hidden = (step !== STEPS);
+  }
+  window.wizNext = () => showStep(step + 1);
+  window.wizBack = () => showStep(step - 1);
+  window.wizGoResultsBack = () => showScreen("form");
+
+  function applyMode() {
+    document.body.classList.toggle("wb", isWB());
+    if (isWB()) {
+      for (let i = 1; i <= STEPS; i++) document.getElementById("step" + i).hidden = false;
+      document.getElementById("btnNext").hidden = true;
+      document.getElementById("btnCalc").hidden = false;
+      const hasRes = document.getElementById("results").style.display === "block";
+      document.getElementById("resPlaceholder").style.display = hasRes ? "none" : "flex";
+    } else {
+      document.getElementById("resPlaceholder").style.display = "none";
+      showStep(step); // pulihkan status langkah wizard
+    }
+    showScreen(current);
+    if (typeof lastBest !== "undefined" && lastBest) requestAnimationFrame(() => drawLayout(lastBest));
+  }
+  if (mq.addEventListener) mq.addEventListener("change", applyMode);
+  else if (mq.addListener) mq.addListener(applyMode);
+
+  // Sukses kalkulasi -> layar hasil (di workbench keduanya sudah tampil), tab Layout
+  const _doCalculate = doCalculate;
+  doCalculate = function () {
+    _doCalculate.apply(null, arguments);
+    if (!isWB()) showScreen("hasil");
+    setTab("layout");
+  };
+
+  // Gagal validasi di wizard -> lompat ke langkah berisi kolom bertanda merah
+  const _calculate = calculate;
+  calculate = function () {
+    _calculate.apply(null, arguments);
+    if (isWB()) return;
+    const bad = document.querySelector("input.err");
+    if (bad) {
+      const st = bad.closest(".step");
+      if (st) showStep(parseInt(st.dataset.step, 10));
+    }
+  };
+
+  // Pengaturan sebagai layar penuh (kedua mode)
+  const _toggleSettings = toggleSettings;
+  toggleSettings = function () {
+    _toggleSettings.apply(null, arguments);
+    const open = document.getElementById("settingsCard").style.display === "block";
+    showScreen(open ? "settings" : beforeSettings);
+  };
+  const _saveSettings = saveSettings;
+  saveSettings = function () {
+    _saveSettings.apply(null, arguments);
+    if (document.getElementById("settingsCard").style.display !== "block") showScreen(beforeSettings);
+  };
+
+  // Tab hasil
+  const TABS = ["layout", "rincian", "nota"];
+  window.setTab = function (name) {
+    TABS.forEach(t => {
+      document.getElementById("pane-" + t).hidden = (t !== name);
+      document.getElementById("tab-" + t).classList.toggle("act", t === name);
+    });
+    if (name === "layout" && typeof lastBest !== "undefined" && lastBest) {
+      requestAnimationFrame(() => drawLayout(lastBest));
+    }
+  };
+
+  applyMode();
+  showStep(1);
+})();
+</script>
+<script>
+// ================= LAPISAN POS v27 =================
+// Order & klien di IndexedDB. Membungkus lapisan v26 tanpa mengubah logika kalkulasi.
+(function () {
+"use strict";
+
+// ---- IndexedDB helpers ----
+let db = null;
+const POS = { orders: [], clients: [], meta: {}, stock: [] };
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open("printcalc_pos", 2);
+    r.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains("orders"))  d.createObjectStore("orders",  { keyPath: "id", autoIncrement: true });
+      if (!d.objectStoreNames.contains("clients")) d.createObjectStore("clients", { keyPath: "id", autoIncrement: true });
+      if (!d.objectStoreNames.contains("meta"))    d.createObjectStore("meta",    { keyPath: "key" });
+      if (!d.objectStoreNames.contains("stock"))   d.createObjectStore("stock",   { keyPath: "name" });
+    };
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+function store(name, mode) { return db.transaction(name, mode).objectStore(name); }
+function idbAll(name)      { return new Promise((res, rej) => { const q = store(name, "readonly").getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); }); }
+function idbPut(name, val) { return new Promise((res, rej) => { const q = store(name, "readwrite").put(val); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); }
+function idbDel(name, key) { return new Promise((res, rej) => { const q = store(name, "readwrite").delete(key); q.onsuccess = () => res(); q.onerror = () => rej(q.error); }); }
+function idbClear(name)    { return new Promise((res, rej) => { const q = store(name, "readwrite").clear(); q.onsuccess = () => res(); q.onerror = () => rej(q.error); }); }
+function dbGuard() { if (db) return true; showToast("⚠️ Penyimpanan lokal tidak tersedia", "err"); return false; }
+
+// ---- util ----
+const byId = id => document.getElementById(id);
+const STATUS_LBL = { order: "Order", produksi: "Produksi", selesai: "Selesai", diambil: "Diambil" };
+const STATUS_SEQ = ["order", "produksi", "selesai", "diambil"];
+const paidSum = o => (o.payments || []).reduce((s, p) => s + (p.amt || 0), 0);
+function payBadge(o) {
+  const p = paidSum(o);
+  if (p <= 0) return ["Belum bayar", "pay-none"];
+  if (p < o.price) return ["DP " + rp(p), "pay-dp"];
+  return ["Lunas", "pay-full"];
+}
+const clientOf = o => POS.clients.find(c => c.id === o.clientId) || null;
+const clientName = o => { const c = clientOf(o); return c ? c.name : "(klien terhapus)"; };
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+}
+function isLate(o) {
+  if (!o.deadline || o.status === "diambil") return false;
+  const t = new Date(); t.setHours(0, 0, 0, 0);
+  return new Date(o.deadline + "T00:00:00") < t;
+}
+function jobSummary(c) {
+  const bahan = String(c.paper || "").split(" (")[0];
+  return `${bahan} · ${c.pW}×${c.pH} cm · ${Number(c.qty).toLocaleString("id-ID")} pcs · ${c.colorCount} warna`;
+}
+async function nextOrderNo() {
+  const now = new Date();
+  const ym = String(now.getFullYear()).slice(2) + String(now.getMonth() + 1).padStart(2, "0");
+  const key = "seq-" + ym;
+  const n = (POS.meta[key] || 0) + 1;
+  POS.meta[key] = n;
+  await idbPut("meta", { key, val: n });
+  return "ORD-" + ym + "-" + String(n).padStart(3, "0");
+}
+
+// ---- navigasi ----
+let REPEAT = null; // { clientId, prevNo, prevPrice }
+window.navGo = function (name) {
+  if (name === "settings") {
+    if (byId("settingsCard").style.display !== "block") toggleSettings();
+    else navScreen("settings");
+    return;
+  }
+  if (name === "form") { REPEAT = null; byId("repeatBanner").hidden = true; }
+  if (name === "orders") renderOrders();
+  if (name === "clients") renderClients();
+  if (name === "stock") renderStock();
+  navScreen(name);
+};
+const NAV_MAP = { form: "form", hasil: "form", settings: "settings", orders: "orders", odetail: "orders", clients: "clients", cdetail: "clients", norder: "orders", stock: "stock" };
+window.onScreenChange = function (name) {
+  const grp = NAV_MAP[name] || "";
+  document.querySelectorAll("#mainNav button").forEach(b => b.classList.toggle("act", b.dataset.nav === grp));
+};
+
+// ---- daftar order ----
+let orderFilter = "aktif";
+window.setOrderFilter = function (f) {
+  orderFilter = f;
+  document.querySelectorAll(".chiprow .chip").forEach(b => b.classList.toggle("act", b.dataset.f === f));
+  renderOrders();
+};
+function sortedOrders() {
+  return [...POS.orders].sort((a, b) => {
+    if (!!a.deadline !== !!b.deadline) return a.deadline ? -1 : 1;
+    if (a.deadline !== b.deadline) return a.deadline < b.deadline ? -1 : 1;
+    return b.createdAt - a.createdAt;
+  });
+}
+function renderOrders() {
+  const list = byId("orderList");
+  const rows = sortedOrders().filter(o =>
+    orderFilter === "semua" ? true : (orderFilter === "riwayat" ? o.status === "diambil" : o.status !== "diambil"));
+  if (!rows.length) {
+    list.innerHTML = `<div class="pos-empty">${orderFilter === "riwayat" ? "Belum ada order selesai-diambil." : "Belum ada order aktif.<br>Mulai dari <b>Kalkulator</b> → kirim penawaran → klien ACC → <b>jadikan order</b>."}</div>`;
+    return;
+  }
+  list.innerHTML = rows.map(o => {
+    const [pl, pc] = payBadge(o);
+    return `<div class="ocard" onclick="posOpenOrder(${o.id})">
+      <div class="ocard-top"><b>${esc(o.no)}</b><span class="badge st-${o.status}">${STATUS_LBL[o.status]}</span></div>
+      <div class="ocard-name">${esc(clientName(o))}</div>
+      <div class="ocard-sub">${esc(jobSummary(o.calc))}</div>
+      <div class="ocard-bot"><span class="badge ${pc}">${pl}</span>
+        ${o.deadline ? `<span class="ddl${isLate(o) ? " late" : ""}">${isLate(o) ? "Lewat deadline · " : "Deadline "}${fmtDate(o.deadline)}</span>` : ""}
+        <b>${rp(o.price)}</b></div>
+    </div>`;
+  }).join("");
+}
+
+// ---- detail order ----
+let curOrderId = null;
+window.posOpenOrder = function (id) {
+  const o = POS.orders.find(x => x.id === id);
+  if (!o) return;
+  curOrderId = id;
+  byId("odTitle").innerText = o.no;
+  const c = clientOf(o);
+  const [pl, pc] = payBadge(o);
+  const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
+  byId("odBody").innerHTML = `
+    <div class="card">
+      <p class="card-title">Klien</p>
+      <div class="row"><span class="lbl">Nama</span><span class="dots"></span><strong class="val">${esc(c ? c.name : "(terhapus)")}</strong></div>
+      ${c && c.phone ? `<div class="row"><span class="lbl">Telepon</span><span class="dots"></span><strong class="val">${esc(c.phone)}</strong></div>` : ""}
+      ${c && c.address ? `<div class="row"><span class="lbl">Alamat</span><span class="dots"></span><strong class="val">${esc(c.address)}</strong></div>` : ""}
+      <div class="row"><span class="lbl">Dibuat</span><span class="dots"></span><strong class="val">${new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</strong></div>
+      ${o.deadline ? `<div class="row"><span class="lbl">Deadline</span><span class="dots"></span><strong class="val"${isLate(o) ? ' style="color:var(--danger)"' : ""}>${fmtDate(o.deadline)}</strong></div>` : ""}
+    </div>
+    <div class="card">
+      <p class="card-title t-mag">Pekerjaan</p>
+      <div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">Cetak ${o.calc.pW}×${o.calc.pH} cm, ${o.calc.colorCount} warna</strong></div>
+      <div class="row"><span class="lbl">Bahan</span><span class="dots"></span><strong class="val">${esc(o.calc.paper)}</strong></div>
+      <div class="row"><span class="lbl">Mesin</span><span class="dots"></span><strong class="val">${esc(o.calc.mName)}</strong></div>
+      <div class="row"><span class="lbl">Oplah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>
+      <div class="row"><span class="lbl">Mata / plano</span><span class="dots"></span><strong class="val">${o.calc.mata} up · ${o.calc.totalPlano} plano</strong></div>
+      ${o.designNote ? `<div class="row"><span class="lbl">Desain / file</span><span class="dots"></span><strong class="val">${esc(o.designNote)}</strong></div>` : ""}
+      ${o.prev ? `<div class="oldprice">Repeat dari ${esc(o.prev.no)} — harga sebelumnya ${rp(o.prev.price)}</div>` : ""}
+      <div class="form-group" style="margin-top:12px"><label>Status pengerjaan</label>
+        <select id="odStatus" onchange="posSetStatus(this.value)">
+          ${STATUS_SEQ.map(s => `<option value="${s}"${s === o.status ? " selected" : ""}>${STATUS_LBL[s]}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-title t-yel">Pembayaran <span class="badge ${pc}" style="margin-left:6px">${pl}</span></p>
+      <div class="row"><span class="lbl">Harga total</span><span class="dots"></span><strong class="val">${rp(o.price)}</strong></div>
+      <div class="row"><span class="lbl">Sudah dibayar</span><span class="dots"></span><strong class="val">${rp(paid)}</strong></div>
+      <div class="row"><span class="lbl"><b>Sisa tagihan</b></span><span class="dots"></span><strong class="val" style="${sisa > 0 ? "color:var(--danger)" : "color:var(--green)"}">${rp(sisa)}</strong></div>
+      ${(o.payments || []).map(p => `<div class="row" style="font-size:12px"><span class="lbl">${new Date(p.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span><span class="dots"></span><span class="val">${rp(p.amt)}</span></div>`).join("")}
+      <div class="pay-add">
+        <div class="form-group" style="margin:0;flex:1"><input type="number" id="odPayAmt" placeholder="Nominal (Rp)"></div>
+        <button class="btn-ghost" onclick="posAddPayment()">Catat bayar</button>
+      </div>
+    </div>
+    <div class="card">
+      <button class="btn-ghost" onclick="posShareNota()">Kirim nota<small>WA / salin teks</small></button>
+      <button class="btn-ghost" onclick="posShareNotaPdf()">Nota PDF<small>file untuk klien</small></button>
+      <button class="btn-ghost" onclick="posRepeat(${o.id})">Repeat order<small>hitung ulang harga sekarang</small></button>
+      <button class="btn-ghost btn-danger" onclick="posDelOrder()">Hapus order</button>
+    </div>`;
+  navScreen("odetail");
+};
+window.posSetStatus = async function (val) {
+  const o = POS.orders.find(x => x.id === curOrderId);
+  if (!o || !dbGuard()) return;
+  o.status = val;
+  await idbPut("orders", o);
+  showToast("✔️ Status: " + STATUS_LBL[val]);
+  posOpenOrder(o.id);
+};
+window.posAddPayment = async function () {
+  const o = POS.orders.find(x => x.id === curOrderId);
+  if (!o || !dbGuard()) return;
+  const amt = parseInt(byId("odPayAmt").value);
+  if (!amt || amt <= 0) { showToast("⚠️ Isi nominal pembayaran", "err"); return; }
+  if (paidSum(o) + amt > o.price) {
+    const ok = await askConfirm(`Pembayaran ini melebihi total harga (${rp(o.price)}). Tetap catat?`, "Ya, catat");
+    if (!ok) return;
+  }
+  o.payments = o.payments || [];
+  o.payments.push({ amt, ts: Date.now() });
+  await idbPut("orders", o);
+  showToast("✔️ Pembayaran dicatat");
+  posOpenOrder(o.id);
+};
+window.posDelOrder = async function () {
+  const o = POS.orders.find(x => x.id === curOrderId);
+  if (!o || !dbGuard()) return;
+  const ok = await askConfirm(`Hapus order ${o.no}? Data tidak bisa dikembalikan.`, "Hapus");
+  if (!ok) return;
+  await idbDel("orders", o.id);
+  POS.orders = POS.orders.filter(x => x.id !== o.id);
+  await stockApply(o.inputs && o.inputs.paper, o.calc.totalPlano, "batal " + o.no);
+  showToast("🗑️ Order dihapus");
+  navGo("orders");
+};
+window.posShareNota = function () {
+  const o = POS.orders.find(x => x.id === curOrderId);
+  if (!o) return;
+  const c = clientOf(o);
+  const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
+  const b = POS.meta.biz || {};
+  const kop = b.name ? `*${b.name}*${b.address ? "\n" + b.address : ""}${b.phone ? "\nTelp: " + b.phone : ""}\n================================\n` : "";
+  const t = `${kop}*NOTA ORDER ${o.no}*
+Klien: ${c ? c.name : "-"}${c && c.phone ? "\nTelp: " + c.phone : ""}
+--------------------------------
+Item: Cetak ${o.calc.pW} × ${o.calc.pH} cm, ${o.calc.colorCount} warna
+Bahan: ${o.calc.paper}
+Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs
+--------------------------------
+Harga total: ${rp(o.price)}
+Dibayar: ${rp(paid)}
+Sisa: ${rp(sisa)}${o.deadline ? "\nEstimasi selesai: " + fmtDate(o.deadline) : ""}
+Status: ${STATUS_LBL[o.status]}`;
+  shareText(t);
+};
+
+// ---- klien ----
+function renderClients() {
+  const q = (byId("clientSearch").value || "").toLowerCase();
+  const rows = [...POS.clients]
+    .filter(c => !q || c.name.toLowerCase().includes(q) || (c.phone || "").includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name, "id"));
+  const cnt = c => POS.orders.filter(o => o.clientId === c.id).length;
+  byId("clientList").innerHTML = rows.length ? rows.map(c => `
+    <div class="ocard" onclick="posOpenClient(${c.id})">
+      <div class="ocard-name">${esc(c.name)}</div>
+      <div class="ocard-sub">${esc(c.phone || "—")} · ${cnt(c)} order</div>
+    </div>`).join("")
+    : `<div class="pos-empty">${q ? "Tidak ada klien yang cocok." : "Belum ada klien. Klien tersimpan otomatis saat order pertama dibuat."}</div>`;
+}
+window.renderClients = renderClients;
+let curClientId = null;
+window.posOpenClient = function (id) {
+  const c = POS.clients.find(x => x.id === id);
+  if (!c) return;
+  curClientId = id;
+  byId("cdTitle").innerText = c.name;
+  const orders = sortedOrders().filter(o => o.clientId === id);
+  byId("cdBody").innerHTML = `
+    <div class="card">
+      <p class="card-title">Data klien</p>
+      <div class="form-group"><label>Nama</label><input type="text" id="cdName" value="${esc(c.name)}"></div>
+      <div class="form-group"><label>Telepon</label><input type="text" id="cdPhone" value="${esc(c.phone || "")}"></div>
+      <div class="form-group"><label>Alamat</label><input type="text" id="cdAddr" value="${esc(c.address || "")}"></div>
+      <button class="btn-ghost" onclick="posSaveClient()">Simpan perubahan</button>
+    </div>
+    <p class="card-title" style="margin:18px 0 10px">Riwayat order (${orders.length})</p>
+    ${orders.length ? orders.map(o => {
+      const [pl, pc] = payBadge(o);
+      return `<div class="ocard" onclick="posOpenOrder(${o.id})">
+        <div class="ocard-top"><b>${esc(o.no)}</b><span class="badge st-${o.status}">${STATUS_LBL[o.status]}</span></div>
+        <div class="ocard-sub">${esc(jobSummary(o.calc))}</div>
+        <div class="ocard-bot"><span class="badge ${pc}">${pl}</span><b>${rp(o.price)}</b></div>
+      </div>`;
+    }).join("") : `<div class="pos-empty">Belum ada order.</div>`}`;
+  navScreen("cdetail");
+};
+window.posSaveClient = async function () {
+  const c = POS.clients.find(x => x.id === curClientId);
+  if (!c || !dbGuard()) return;
+  const name = byId("cdName").value.trim();
+  if (!name) { showToast("⚠️ Nama klien tidak boleh kosong", "err"); return; }
+  c.name = name; c.phone = byId("cdPhone").value.trim(); c.address = byId("cdAddr").value.trim();
+  await idbPut("clients", c);
+  showToast("✔️ Data klien disimpan");
+  posOpenClient(c.id);
+};
+
+// ---- order baru (ACC) ----
+window.openNewOrder = function () {
+  if (typeof lastCalc === "undefined" || !lastCalc) { showToast("⚠️ Hitung kalkulasi dulu", "err"); return; }
+  byId("noCalcSum").innerHTML =
+    `<b>${esc(jobSummary(lastCalc))}</b><br>Mesin ${esc(lastCalc.mName)} · ${lastCalc.mata} up · ${lastCalc.totalPlano} plano · penawaran <b>${rp(lastCalc.totalOffer)}</b>`;
+  const sel = byId("noClientSel");
+  sel.innerHTML = `<option value="">— Klien baru —</option>` +
+    [...POS.clients].sort((a, b) => a.name.localeCompare(b.name, "id"))
+      .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  ["noName", "noPhone", "noAddr", "noDesign", "noDeadline", "noDP"].forEach(id => { byId(id).value = ""; });
+  byId("noPrice").value = Math.round(lastCalc.totalOffer);
+  const pName = (SET.papers[parseInt(byId("paperType").value)] || {}).name || "";
+  const st = stockOf(pName);
+  const sisa = st ? st.qty : 0;
+  const unit = stockUnit(st);
+  const butuh = lastCalc.totalPlano;
+  const setelah = sisa - butuh;
+  byId("noStockInfo").innerHTML = setelah < 0
+    ? `<div class="stk-warn">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → kurang <b>${Math.abs(setelah).toLocaleString("id-ID")} lembar</b>.<br>Saran: ${beliSaran(Math.abs(setelah), unit)} — sisa nanti ${(setelah + Math.ceil(Math.abs(setelah) / unit) * unit).toLocaleString("id-ID")} lembar. Catat di tab Stok saat barang datang.</div>`
+    : `<div class="stk-ok">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → sisa setelah order <b>${setelah.toLocaleString("id-ID")} lembar</b> (${rimText(setelah, unit)}).</div>`;
+  const ob = byId("noOldPrice");
+  if (REPEAT) {
+    sel.value = String(REPEAT.clientId);
+    ob.hidden = false;
+    ob.innerHTML = `Repeat dari <b>${esc(REPEAT.prevNo)}</b> — harga sebelumnya <b>${rp(REPEAT.prevPrice)}</b>, harga sekarang <b>${rp(lastCalc.totalOffer)}</b>. Ubah kolom harga jika ingin pakai harga lama.`;
+  } else { ob.hidden = true; }
+  onClientSelChange();
+  navScreen("norder");
+};
+window.onClientSelChange = function () {
+  const sel = byId("noClientSel");
+  const c = POS.clients.find(x => String(x.id) === sel.value);
+  ["noName", "noPhone", "noAddr"].forEach(id => byId(id).disabled = !!c);
+  if (c) { byId("noName").value = c.name; byId("noPhone").value = c.phone || ""; byId("noAddr").value = c.address || ""; }
+  else { byId("noName").value = ""; byId("noPhone").value = ""; byId("noAddr").value = ""; }
+};
+window.saveNewOrder = async function () {
+  if (!dbGuard() || !lastCalc) return;
+  clearErr("noName"); clearErr("noPrice"); clearErr("noDP");
+  const selVal = byId("noClientSel").value;
+  const name = byId("noName").value.trim();
+  const price = parseInt(byId("noPrice").value);
+  const dp = parseInt(byId("noDP").value) || 0;
+  let bad = false;
+  if (!selVal && !name) { markErr("noName", "Isi nama klien"); bad = true; }
+  if (!price || price <= 0) { markErr("noPrice", "Isi harga total"); bad = true; }
+  if (dp < 0 || (price > 0 && dp > price)) { markErr("noDP", "DP melebihi harga total"); bad = true; }
+  if (bad) return;
+
+  let clientId;
+  if (selVal) clientId = parseInt(selVal);
+  else {
+    const c = { name, phone: byId("noPhone").value.trim(), address: byId("noAddr").value.trim(), createdAt: Date.now() };
+    c.id = await idbPut("clients", c);
+    POS.clients.push(c);
+    clientId = c.id;
+  }
+  const mSel = byId("machineType"), pSel = byId("paperType");
+  const o = {
+    no: await nextOrderNo(),
+    clientId, createdAt: Date.now(),
+    deadline: byId("noDeadline").value || "",
+    status: "order",
+    payments: dp > 0 ? [{ amt: dp, ts: Date.now() }] : [],
+    price,
+    designNote: byId("noDesign").value.trim(),
+    prev: REPEAT ? { no: REPEAT.prevNo, price: REPEAT.prevPrice } : null,
+    calc: JSON.parse(JSON.stringify(lastCalc)),
+    inputs: {
+      machine: (SET.machines[parseInt(mSel.value)] || {}).name || "",
+      paper: (SET.papers[parseInt(pSel.value)] || {}).name || "",
+      pW: lastCalc.pW, pH: lastCalc.pH, colors: lastCalc.colorCount,
+      gripper: byId("useGripper").checked, qty: lastCalc.qty,
+      baseProfit: parseInt(byId("baseProfit").value) || 0,
+      markup: parseFloat(byId("markup").value) || 0
+    }
+  };
+  o.id = await idbPut("orders", o);
+  POS.orders.push(o);
+  await stockApply(o.inputs.paper, -o.calc.totalPlano, o.no);
+  REPEAT = null; byId("repeatBanner").hidden = true;
+  showToast("✔️ Order " + o.no + " tersimpan");
+  maybeBackupNudge();
+  posOpenOrder(o.id);
+};
+
+// ---- repeat order ----
+window.posRepeat = function (id) {
+  const o = POS.orders.find(x => x.id === id);
+  if (!o) return;
+  const inp = o.inputs || {};
+  const mi = SET.machines.findIndex(m => m.name === inp.machine);
+  const pi = SET.papers.findIndex(p => p.name === inp.paper);
+  if (mi >= 0) byId("machineType").value = String(mi);
+  if (pi >= 0) byId("paperType").value = String(pi);
+  if (mi < 0 || pi < 0) showToast("⚠️ Mesin/kertas order lama tidak ada lagi di pengaturan — periksa pilihan", "err");
+  byId("pW").value = inp.pW; byId("pH").value = inp.pH;
+  byId("colors").value = String(inp.colors || 1);
+  byId("useGripper").checked = inp.gripper !== false;
+  byId("qty").value = inp.qty; byId("qtyAlt").value = "";
+  if (inp.baseProfit) byId("baseProfit").value = inp.baseProfit;
+  if (inp.markup || inp.markup === 0) byId("markup").value = inp.markup;
+  if (typeof updateData === "function") updateData();
+  REPEAT = { clientId: o.clientId, prevNo: o.no, prevPrice: o.price };
+  const rb = byId("repeatBanner");
+  rb.hidden = false;
+  rb.innerHTML = `Repeat order — <b>${esc(clientName(o))}</b> · harga sebelumnya <b>${rp(o.price)}</b> (${esc(o.no)}). Harga baru dihitung dengan tarif sekarang.`;
+  navScreen("form");
+  calculate();
+};
+
+
+
+// ---- stok kertas ----
+const RIM_DEFAULT = 500;
+const stockOf = name => POS.stock.find(x => x.name === name) || null;
+const stockUnit = st => (st && st.unit) || RIM_DEFAULT;
+async function stockApply(name, delta, note) {
+  if (!db || !name || !delta) return;
+  let st = stockOf(name);
+  if (!st) { st = { name, qty: 0, unit: RIM_DEFAULT, log: [] }; POS.stock.push(st); }
+  st.qty += delta;
+  st.log = (st.log || []);
+  st.log.push({ ts: Date.now(), delta, note: note || "" });
+  if (st.log.length > 60) st.log = st.log.slice(-60);
+  await idbPut("stock", st);
+}
+function rimText(n, unit) {
+  const rim = n / unit;
+  return (Math.round(rim * 10) / 10).toLocaleString("id-ID") + " rim";
+}
+function beliSaran(kurang, unit) {
+  const rim = Math.ceil(kurang / unit);
+  return `beli <b>${rim} rim</b> (${(rim * unit).toLocaleString("id-ID")} lembar)`;
+}
+let stockOpen = null;
+window.stockToggle = function (name) {
+  stockOpen = (stockOpen === name) ? null : name;
+  renderStock();
+};
+function renderStock() {
+  const names = SET.papers.map(p => p.name);
+  const orphans = POS.stock.filter(st => !names.includes(st.name));
+  const items = names.map(n => stockOf(n) || { name: n, qty: 0, unit: RIM_DEFAULT, log: [] }).concat(orphans);
+  byId("stockList").innerHTML = items.map(st => {
+    const unit = stockUnit(st);
+    const minus = st.qty < 0;
+    const openNow = stockOpen === st.name;
+    const orphan = !names.includes(st.name);
+    return `<div class="ocard" onclick="stockToggle('${esc(st.name).replace(/'/g, "\\'")}')">
+      <div class="ocard-top"><span class="ocard-name" style="margin:0">${esc(st.name)}${orphan ? ' <span class="badge pay-none">tidak ada di pengaturan</span>' : ""}</span>
+        <span style="text-align:right"><span class="stk-qty${minus ? " minus" : ""}">${st.qty.toLocaleString("id-ID")}</span> <span class="stk-rim">lembar${minus ? " (kurang)" : " · " + rimText(st.qty, unit)}</span></span></div>
+      ${openNow ? `<div class="stk-body" onclick="event.stopPropagation()">
+        <div class="stk-row">
+          <div class="form-group"><input type="number" id="stIn" placeholder="Jumlah masuk"></div>
+          <select id="stInUnit"><option value="rim">rim</option><option value="lbr">lembar</option></select>
+          <button class="btn-ghost" onclick="stockMasuk('${esc(st.name).replace(/'/g, "\\'")}')">Masuk</button>
+        </div>
+        <div class="stk-row">
+          <div class="form-group"><input type="number" id="stFix" placeholder="Hasil opname (lembar)"></div>
+          <button class="btn-ghost" onclick="stockOpname('${esc(st.name).replace(/'/g, "\\'")}')">Koreksi</button>
+        </div>
+        <div class="stk-row">
+          <div class="form-group"><label style="font-size:11px">Isi per rim</label><input type="number" id="stUnit" value="${unit}" onchange="stockSetUnit('${esc(st.name).replace(/'/g, "\\'")}', this.value)"></div>
+        </div>
+        <div class="stk-log">${(st.log || []).slice(-8).reverse().map(l =>
+          `<div class="row"><span class="lbl">${new Date(l.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short" })} ${esc(l.note)}</span><span class="dots"></span><span class="val">${l.delta > 0 ? "+" : ""}${l.delta.toLocaleString("id-ID")}</span></div>`).join("") || "Belum ada mutasi."}</div>
+      </div>` : ""}
+    </div>`;
+  }).join("") || `<div class="pos-empty">Belum ada jenis kertas di pengaturan.</div>`;
+}
+window.renderStock = renderStock;
+window.stockMasuk = async function (name) {
+  if (!dbGuard()) return;
+  const n = parseInt(byId("stIn").value);
+  if (!n || n <= 0) { showToast("⚠️ Isi jumlah barang masuk", "err"); return; }
+  const st = stockOf(name);
+  const lembar = byId("stInUnit").value === "rim" ? n * stockUnit(st) : n;
+  await stockApply(name, lembar, "barang masuk");
+  showToast("✔️ Masuk " + lembar.toLocaleString("id-ID") + " lembar");
+  renderStock();
+};
+window.stockOpname = async function (name) {
+  if (!dbGuard()) return;
+  const v = byId("stFix").value;
+  if (v === "") { showToast("⚠️ Isi hasil hitung fisik", "err"); return; }
+  const target = parseInt(v);
+  const st = stockOf(name);
+  const cur = st ? st.qty : 0;
+  if (target === cur) { showToast("Stok sudah sesuai"); return; }
+  await stockApply(name, target - cur, "koreksi opname");
+  showToast("✔️ Stok dikoreksi ke " + target.toLocaleString("id-ID") + " lembar");
+  renderStock();
+};
+window.stockSetUnit = async function (name, val) {
+  if (!dbGuard()) return;
+  const unit = parseInt(val) || RIM_DEFAULT;
+  let st = stockOf(name);
+  if (!st) { st = { name, qty: 0, unit, log: [] }; POS.stock.push(st); }
+  st.unit = unit;
+  await idbPut("stock", st);
+  renderStock();
+};
+
+
+// ---- identitas usaha + logo ----
+function bizLoadForm() {
+  const b = POS.meta.biz || {};
+  byId("bizName").value = b.name || "";
+  byId("bizAddr").value = b.address || "";
+  byId("bizPhone").value = b.phone || "";
+  logoPreview();
+}
+window.bizSave = async function () {
+  if (!dbGuard()) return;
+  const biz = { name: byId("bizName").value.trim(), address: byId("bizAddr").value.trim(), phone: byId("bizPhone").value.trim() };
+  POS.meta.biz = biz;
+  await idbPut("meta", { key: "biz", val: biz });
+  showToast("✔️ Identitas usaha disimpan");
+};
+function logoPreview() {
+  const l = POS.meta.logo;
+  byId("logoPrev").innerHTML = l ? `<img src="${l.dataUrl}" alt="logo" style="max-height:56px;max-width:180px;border:1px solid var(--border);border-radius:8px;padding:4px;background:#fff">` : `<span class="set-hint">Belum ada logo.</span>`;
+  byId("logoDelBtn").hidden = !l;
+}
+window.logoStore = async function (dataUrl, wpx, hpx) {
+  if (!dbGuard()) return;
+  POS.meta.logo = { dataUrl, w: wpx, h: hpx };
+  await idbPut("meta", { key: "logo", val: POS.meta.logo });
+  logoPreview();
+};
+window.bizLogoUpload = function (file) {
+  byId("logoFile").value = "";
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = async () => {
+      const MAX = 256;
+      const sc = Math.min(1, MAX / Math.max(img.width, img.height));
+      const cw = Math.max(1, Math.round(img.width * sc)), ch = Math.max(1, Math.round(img.height * sc));
+      const cv = document.createElement("canvas");
+      cv.width = cw; cv.height = ch;
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, cw, ch); // JPEG tanpa transparansi -> latar putih
+      ctx.drawImage(img, 0, 0, cw, ch);
+      await logoStore(cv.toDataURL("image/jpeg", 0.85), cw, ch);
+      showToast("✔️ Logo tersimpan");
+    };
+    img.onerror = () => showToast("⚠️ File gambar tidak terbaca", "err");
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(file);
+};
+window.logoDelete = async function () {
+  if (!dbGuard()) return;
+  delete POS.meta.logo;
+  await idbPut("meta", { key: "logo", val: null });
+  logoPreview();
+  showToast("🗑️ Logo dihapus");
+};
+function signPreview() {
+  const l = POS.meta.sign;
+  byId("signPrev").innerHTML = l ? `<img src="${l.dataUrl}" alt="ttd" style="max-height:48px;max-width:200px;border:1px solid var(--border);border-radius:8px;padding:4px;background:#fff">` : "";
+  byId("signDelBtn").hidden = !l;
+}
+window.signStore = async function (dataUrl, wpx, hpx) {
+  if (!dbGuard()) return;
+  POS.meta.sign = { dataUrl, w: wpx, h: hpx };
+  await idbPut("meta", { key: "sign", val: POS.meta.sign });
+  signPreview();
+};
+window.signUpload = function (file) {
+  byId("signFile").value = "";
+  if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const img = new Image();
+    img.onload = async () => {
+      const MAX = 400;
+      const sc = Math.min(1, MAX / Math.max(img.width, img.height));
+      const cw = Math.max(1, Math.round(img.width * sc)), ch = Math.max(1, Math.round(img.height * sc));
+      const cv = document.createElement("canvas");
+      cv.width = cw; cv.height = ch;
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(img, 0, 0, cw, ch);
+      await signStore(cv.toDataURL("image/jpeg", 0.85), cw, ch);
+      showToast("✔️ Tanda tangan tersimpan");
+    };
+    img.onerror = () => showToast("⚠️ File gambar tidak terbaca", "err");
+    img.src = rd.result;
+  };
+  rd.readAsDataURL(file);
+};
+window.signDelete = async function () {
+  if (!dbGuard()) return;
+  delete POS.meta.sign;
+  await idbPut("meta", { key: "sign", val: null });
+  signPreview();
+  showToast("🗑️ Tanda tangan dihapus");
+};
+
+// ---- nota PDF (generator minimal tanpa library, font Helvetica bawaan PDF) ----
+const HELV_W = { " ":278,"!":278,'"':355,"#":556,"$":556,"%":889,"&":667,"'":191,"(":333,")":333,"*":389,"+":584,",":278,"-":333,".":278,"/":278,"0":556,"1":556,"2":556,"3":556,"4":556,"5":556,"6":556,"7":556,"8":556,"9":556,":":278,";":278,"<":584,"=":584,">":584,"?":556,"@":1015,"A":667,"B":667,"C":722,"D":722,"E":667,"F":611,"G":778,"H":722,"I":278,"J":500,"K":667,"L":556,"M":833,"N":722,"O":778,"P":667,"Q":778,"R":722,"S":667,"T":611,"U":722,"V":667,"W":944,"X":667,"Y":667,"Z":611,"[":278,"\\":278,"]":278,"^":469,"_":556,"`":333,"a":556,"b":556,"c":500,"d":556,"e":556,"f":278,"g":556,"h":556,"i":222,"j":222,"k":500,"l":222,"m":833,"n":556,"o":556,"p":556,"q":556,"r":333,"s":500,"t":278,"u":556,"v":500,"w":722,"x":500,"y":500,"z":500,"{":334,"|":260,"}":334,"~":584 };
+function pdfSan(t) {
+  return String(t).replace(/×/g, "x").replace(/[–—]/g, "-").replace(/[·•]/g, ".").replace(/…/g, "...")
+    .replace(/[^\x20-\x7E]/g, "").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+function pdfW(t, size) {
+  let w = 0;
+  for (const ch of String(t)) w += (HELV_W[ch] || 556);
+  return w * size / 1000;
+}
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const u = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+  return u;
+}
+function notaPdfBlob(o) {
+  const c = clientOf(o);
+  const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
+  const biz = POS.meta.biz || {};
+  const logo = POS.meta.logo || null;
+  const sign = POS.meta.sign || null;
+  const PW = 420, PH = 595, ML = 36, MR = PW - 36;
+  const ops = [];
+  const line = (x1, y1, x2, y2, col, lw) => ops.push(`${lw || 0.7} w ${col || "0.85 0.87 0.9"} RG ${x1} ${y1} m ${x2} ${y2} l S`);
+  const txt = (x, y, t, opt) => {
+    opt = opt || {};
+    const f = opt.bold ? "F2" : "F1", sz = opt.size || 9, col = opt.col || "0.13 0.15 0.2";
+    t = pdfSan(t);
+    let px = x;
+    if (opt.right) px = x - pdfW(t, sz);
+    ops.push(`BT /${f} ${sz} Tf ${col} rg ${px.toFixed(1)} ${y.toFixed(1)} Td (${t}) Tj ET`);
+  };
+  const GREY = "0.42 0.46 0.52", BRAND = "0.12 0.3 0.72", DARK = "0.13 0.15 0.2";
+
+  // watermark: logo repetisi rapat, grup diputar -15 derajat, transparan (paling bawah)
+  if (logo) {
+    const tw = 56, th = tw * logo.h / logo.w;
+    const wc = 0.9659, ws = -0.2588; // -15 derajat
+    ops.push(`q /GSwm gs ${wc} ${ws} ${-ws} ${wc} 0 0 cm`);
+    let rowN = 0;
+    for (let y0 = -220; y0 < PH + 240; y0 += 96, rowN++) {
+      const off = (rowN % 2) ? 60 : 0;
+      for (let x0 = -240 + off; x0 < PW + 260; x0 += 120) {
+        ops.push(`q ${tw} 0 0 ${th.toFixed(1)} ${x0.toFixed(1)} ${y0.toFixed(1)} cm /ImL Do Q`);
+      }
+    }
+    ops.push("Q");
+  }
+
+  // kop: logo + identitas usaha kiri, NOTA ORDER + nomor kanan
+  let idX = ML;
+  if (logo) {
+    let lh = 30, lw = lh * logo.w / logo.h;
+    if (lw > 110) { lw = 110; lh = lw * logo.h / logo.w; }
+    ops.push(`q ${lw.toFixed(1)} 0 0 ${lh.toFixed(1)} ${ML} ${(PH - 40 - lh + 6).toFixed(1)} cm /ImL Do Q`);
+    idX = ML + lw + 10;
+  }
+  txt(idX, PH - 46, biz.name || "Nota Penjualan", { bold: true, size: 12 });
+  let iy = PH - 58;
+  if (biz.address) { txt(idX, iy, biz.address, { size: 7.5, col: GREY }); iy -= 9.5; }
+  if (biz.phone)   { txt(idX, iy, "Telp/WA " + biz.phone, { size: 7.5, col: GREY }); }
+  txt(MR, PH - 40, "NOTA ORDER", { bold: true, size: 9.5, col: BRAND, right: true });
+  txt(MR, PH - 53, o.no, { bold: true, size: 12.5, right: true });
+  txt(MR, PH - 65, "Dibuat " + new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) + "  .  Status: " + STATUS_LBL[o.status], { size: 7.5, col: GREY, right: true });
+  line(ML, PH - 80, MR, PH - 80, BRAND, 2.5);
+
+  let y = PH - 102;
+  // klien
+  txt(ML, y, "KLIEN", { bold: true, size: 7.5, col: GREY }); y -= 14;
+  txt(ML, y, c ? c.name : "-", { bold: true, size: 11.5 }); y -= 12;
+  if (c && c.phone)   { txt(ML, y, c.phone,   { size: 9, col: GREY }); y -= 11; }
+  if (c && c.address) { txt(ML, y, c.address, { size: 9, col: GREY }); y -= 11; }
+  y -= 6; line(ML, y, MR, y); y -= 18;
+
+  // pekerjaan
+  txt(ML, y, "PEKERJAAN", { bold: true, size: 7.5, col: GREY }); y -= 15;
+  const row = (l, v, opt) => {
+    txt(ML, y, l, { size: 9, col: GREY });
+    txt(MR, y, v, Object.assign({ size: 9, right: true }, opt || {}));
+    y -= 13;
+  };
+  row("Item", `Cetak ${o.calc.pW} x ${o.calc.pH} cm, ${o.calc.colorCount} warna`);
+  row("Bahan", o.calc.paper);
+  row("Oplah", Number(o.calc.qty).toLocaleString("id-ID") + " pcs");
+  if (o.designNote) row("Desain / file", o.designNote);
+  if (o.deadline) row("Estimasi selesai", fmtDate(o.deadline));
+  y -= 5; line(ML, y, MR, y); y -= 18;
+
+  // pembayaran
+  txt(ML, y, "PEMBAYARAN", { bold: true, size: 7.5, col: GREY }); y -= 15;
+  row("Harga total", rp(o.price), { bold: true });
+  (o.payments || []).forEach(p => {
+    row("Bayar " + new Date(p.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }), rp(p.amt));
+  });
+  row("Total dibayar", rp(paid));
+  y -= 2; line(ML, y, MR, y, "0.6 0.65 0.72", 1); y -= 16;
+  txt(ML, y, "SISA TAGIHAN", { bold: true, size: 10.5 });
+  txt(MR, y, sisa > 0 ? rp(sisa) : "LUNAS", { bold: true, size: 12, right: true, col: sisa > 0 ? "0.75 0.15 0.13" : "0.08 0.5 0.24" });
+  const stampY = y;
+  const lunas = o.price > 0 && paid >= o.price;
+
+  // blok tanda tangan (kanan bawah)
+  const cx = MR - 70;
+  const ctr = (yy, t, opt) => { opt = opt || {}; txt(cx - pdfW(pdfSan(t), opt.size || 9) / 2, yy, t, opt); };
+  ctr(170, "Hormat kami,", { size: 9 });
+  if (sign) {
+    let sh = 44, sw = sh * sign.w / sign.h;
+    if (sw > 130) { sw = 130; sh = sw * sign.h / sign.w; }
+    ops.push(`q ${sw.toFixed(1)} 0 0 ${sh.toFixed(1)} ${(cx - sw / 2).toFixed(1)} ${112} cm /ImS Do Q`);
+  }
+  line(cx - 62, 106, cx + 62, 106, "0.6 0.65 0.72", 0.8);
+  ctr(94, biz.name || "", { bold: true, size: 9.5 });
+
+  // footer
+  line(ML, 46, MR, 46);
+  txt(ML, 34, "Dicetak " + new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }), { size: 7, col: GREY });
+  txt(MR, 34, "PrintCalc Pro", { size: 7, col: GREY, right: true });
+
+  // stempel LUNAS (vektor, miring, semi-transparan seperti tinta stempel)
+  if (lunas) {
+    const lastPay = (o.payments || []).reduce((m, p) => Math.max(m, p.ts || 0), o.createdAt);
+    const cosr = 0.9781, sinr = -0.2079; // -12 derajat
+    const tx = MR - 118, ty = stampY + 30;
+    const RED = "0.78 0.16 0.14";
+    ops.push(`q /GSst gs ${cosr} ${sinr} ${-sinr} ${cosr} ${tx} ${ty} cm`);
+    ops.push(`1.8 w ${RED} RG -66 -25 132 50 re S`);
+    ops.push(`0.8 w ${RED} RG -61 -20 122 40 re S`);
+    ops.push(`BT /F2 23 Tf ${RED} rg ${(-pdfW("LUNAS", 23) / 2).toFixed(1)} -4 Td (LUNAS) Tj ET`);
+    const dt = pdfSan(new Date(lastPay).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }));
+    ops.push(`BT /F1 6.5 Tf ${RED} rg ${(-pdfW(dt, 6.5) / 2).toFixed(1)} -16 Td (${dt}) Tj ET`);
+    ops.push("Q");
+  }
+
+  // rakit dokumen (byte-level, karena JPEG logo adalah data biner)
+  const enc = new TextEncoder();
+  const content = enc.encode(ops.join("\n"));
+  const objs = [
+    ["<< /Type /Catalog /Pages 2 0 R >>"],
+    ["<< /Type /Pages /Kids [3 0 R] /Count 1 >>"],
+    [(() => {
+      let n = 7;
+      const xo = [];
+      if (logo) xo.push(`/ImL ${n++} 0 R`);
+      if (sign) xo.push(`/ImS ${n++} 0 R`);
+      const gse = [];
+      if (logo) gse.push(`/GSwm ${n++} 0 R`);
+      if (lunas) gse.push(`/GSst ${n++} 0 R`);
+      const gs = gse.length ? ` /ExtGState << ${gse.join(" ")} >>` : "";
+      return `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >>${xo.length ? " /XObject << " + xo.join(" ") + " >>" : ""}${gs} >> >>`;
+    })()],
+    [`<< /Length ${content.length} >>\nstream\n`, content, "\nendstream"],
+    ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"],
+    ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"]
+  ];
+  const imgObj = l => {
+    const jb = b64ToBytes(l.dataUrl.split(",")[1]);
+    return [`<< /Type /XObject /Subtype /Image /Width ${l.w} /Height ${l.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jb.length} >>\nstream\n`, jb, "\nendstream"];
+  };
+  if (logo) objs.push(imgObj(logo));
+  if (sign) objs.push(imgObj(sign));
+  if (logo) objs.push(["<< /Type /ExtGState /ca 0.05 /CA 0.05 >>"]);
+  if (lunas) objs.push(["<< /Type /ExtGState /ca 0.72 /CA 0.72 >>"]);
+  const chunks = [];
+  let pos = 0;
+  const push = p => { const b = typeof p === "string" ? enc.encode(p) : p; chunks.push(b); pos += b.length; };
+  push("%PDF-1.4\n");
+  const offs = [];
+  objs.forEach((parts, i) => {
+    offs.push(pos);
+    push(`${i + 1} 0 obj\n`);
+    parts.forEach(push);
+    push("\nendobj\n");
+  });
+  const xref = pos;
+  push(`xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` +
+    offs.map(n => String(n).padStart(10, "0") + " 00000 n \n").join("") +
+    `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(chunks, { type: "application/pdf" });
+}
+window.posShareNotaPdf = async function () {
+  const o = POS.orders.find(x => x.id === curOrderId);
+  if (!o) return;
+  const blob = notaPdfBlob(o);
+  const name = "nota-" + o.no + ".pdf";
+  try {
+    const file = new File([blob], name, { type: "application/pdf" });
+    if (IS_MOBILE && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      showToast("✔️ Nota PDF dibagikan"); return;
+    }
+  } catch (e) { /* dibatalkan / tak didukung -> unduh */ }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  showToast("✔️ Nota PDF diunduh");
+};
+
+// ---- backup / export / import ----
+function updateBackupInfo() {
+  const el = byId("lastBackupInfo");
+  const t = POS.meta.lastBackup;
+  el.innerText = t ? "Backup terakhir: " + new Date(t).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) : "Belum pernah backup.";
+}
+async function markBackup() {
+  POS.meta.lastBackup = Date.now();
+  if (db) await idbPut("meta", { key: "lastBackup", val: POS.meta.lastBackup });
+  updateBackupInfo();
+}
+window.exportData = async function () {
+  const payload = {
+    app: "printcalc", ver: 27, exportedAt: new Date().toISOString(),
+    settings: localStorage.getItem(STORAGE_KEY) || JSON.stringify(SET),
+    lastsel: localStorage.getItem("printcalc_lastsel") || null,
+    clients: POS.clients, orders: POS.orders, stock: POS.stock,
+    meta: Object.entries(POS.meta).map(([key, val]) => ({ key, val }))
+  };
+  const name = "printcalc-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+  const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+  try {
+    const file = new File([blob], name, { type: "application/json" });
+    if (IS_MOBILE && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      await markBackup(); showToast("✔️ Backup dibagikan"); return;
+    }
+  } catch (e) { /* dibatalkan / tak didukung -> unduh */ }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  await markBackup(); showToast("✔️ File backup diunduh");
+};
+window.importData = async function (file) {
+  byId("importFile").value = "";
+  if (!file || !dbGuard()) return;
+  let data;
+  try { data = JSON.parse(await file.text()); } catch (e) { showToast("⚠️ File bukan JSON valid", "err"); return; }
+  if (!data || data.app !== "printcalc") { showToast("⚠️ Bukan file backup PrintCalc", "err"); return; }
+  const ok = await askConfirm(`Import akan MENGGANTI seluruh data (${(data.orders || []).length} order, ${(data.clients || []).length} klien) dan pengaturan di perangkat ini. Lanjutkan?`, "Import");
+  if (!ok) return;
+  await idbClear("orders"); await idbClear("clients"); await idbClear("meta"); await idbClear("stock");
+  for (const c of (data.clients || [])) await idbPut("clients", c);
+  for (const o of (data.orders || [])) await idbPut("orders", o);
+  for (const m of (data.meta || [])) await idbPut("meta", m);
+  for (const st of (data.stock || [])) await idbPut("stock", st);
+  if (data.settings) localStorage.setItem(STORAGE_KEY, data.settings);
+  if (data.lastsel) localStorage.setItem("printcalc_lastsel", data.lastsel);
+  showToast("✔️ Data berhasil di-import — memuat ulang…");
+  setTimeout(() => location.reload(), 900);
+};
+function maybeBackupNudge() {
+  if (!POS.orders.length) return;
+  const t = POS.meta.lastBackup || 0;
+  if (Date.now() - t > 14 * 24 * 3600 * 1000) {
+    setTimeout(() => showToast("💾 Sudah lama tidak backup — ekspor data lewat menu Pengaturan"), 1600);
+  }
+}
+
+// ---- init ----
+(async function init() {
+  try {
+    db = await idbOpen();
+    POS.orders = await idbAll("orders");
+    POS.clients = await idbAll("clients");
+    POS.stock = await idbAll("stock");
+    (await idbAll("meta")).forEach(m => { if (m.val !== null && m.val !== undefined) POS.meta[m.key] = m.val; });
+  } catch (e) {
+    db = null;
+    setTimeout(() => showToast("⚠️ Penyimpanan lokal tidak tersedia — order tidak akan tersimpan", "err"), 800);
+  }
+  updateBackupInfo();
+  bizLoadForm();
+  signPreview();
+  navGo("orders");
+  maybeBackupNudge();
+})();
+})();
+</script>
+</body>
+</html>

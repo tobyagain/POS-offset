@@ -74,15 +74,15 @@ function boot({ width = 390, idb } = {}) {
   ok(resi.textContent.includes("TOTAL") && resi.textContent.includes(rpID(price)), "resi memuat harga total");
   ok(resi.textContent.includes("SISA") && resi.textContent.includes(rpID(price - 100000)), "resi memuat sisa tagihan setelah DP");
   ok(!resi.innerHTML.includes("r-lunas"), "belum lunas: blok LUNAS tidak tampil");
-  ok(d.getElementById("resiPageStyle").textContent.includes("size: 58mm"), "@page memakai lebar 58 mm");
-  ok(!resi.className.includes("w80"), "lebar konten 58 mm (tanpa kelas w80)");
+  ok(d.getElementById("resiPageStyle").textContent.includes("size: 48mm"), "@page = area cetak 48 mm untuk kertas 58");
+  ok(!resi.className.includes("w80"), "kertas 58: tanpa kelas w80");
   w.dispatchEvent(new w.Event("afterprint"));
   ok(!d.body.classList.contains("print-resi"), "afterprint mengembalikan tampilan normal");
 
   // Ganti ke 80 mm -> tersimpan + dipakai saat cetak
   await w.thermalSetWidth("80"); await tick();
   w.posPrintResi();
-  ok(d.getElementById("resiPageStyle").textContent.includes("size: 80mm") && resi.className.includes("w80"), "ganti 80 mm: @page dan lebar konten ikut");
+  ok(d.getElementById("resiPageStyle").textContent.includes("size: 72mm") && resi.className.includes("w80"), "ganti kertas 80: @page = area cetak 72 mm + kelas w80");
   w.dispatchEvent(new w.Event("afterprint"));
 
   // Lunas -> blok LUNAS tampil di resi
@@ -97,6 +97,7 @@ function boot({ width = 390, idb } = {}) {
   let w2 = boot({ width: 390, idb: sharedIdb });
   await tick(80);
   w2.navGo("orders");
+  for (let i = 0; i < 30 && !w2.document.querySelector("#orderList .ocard"); i++) { await tick(50); w2.navGo("orders"); } // tunggu IDB termuat
   w2.document.querySelector("#orderList .ocard").click();
   await tick();
   ok(w2.document.getElementById("odResiW").value === "80", "pilihan lebar 80 mm bertahan setelah reload");

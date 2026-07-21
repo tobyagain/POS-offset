@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (98 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (100 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -64,8 +64,9 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   Kategori pengeluaran teks bebas — keputusan Toby, jangan diganti dropdown.
 - **Resi thermal** lewat dialog print browser (driver printer Blueprint USB),
   BUKAN ESC/POS. Konten dirakit ke `#resiPrint`, `@page` disuntik dinamis
-  sesuai lebar kertas (58/80 mm, tersimpan di meta), `body.print-resi`
-  menyembunyikan sisa halaman saat print.
+  memakai AREA CETAK efektif (kertas 58 → 48 mm, kertas 80 → 72 mm; pilihan
+  58/80 tersimpan di meta), font sans tebal (head thermal 1-bit — font tipis
+  tercetak abu/putus), `body.print-resi` menyembunyikan sisa halaman saat print.
 
 ## Aturan bisnis percetakan (jangan "diperbaiki")
 

@@ -47,6 +47,11 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   BUKAN ESC/POS langsung. ESC/POS via Web Bluetooth/USB boleh ditambah nanti
   kalau alur dialog terasa lambat di lapangan, tanpa membongkar yang ada.
 - Lebar kertas 58/80 mm dipilih di detail order, tersimpan di meta (`thermal`).
+- @page memakai area cetak efektif (48/72 mm), bukan lebar kertas — driver
+  thermal mendefinisikan halaman selebar area cetak; pakai 58/80 membuat
+  konten diskalakan/terpotong (temuan uji printer pertama).
+- Font resi: sans-serif tebal ukuran besar, bukan monospace tipis — head
+  thermal 1-bit mencetak font tipis jadi abu-abu/putus (temuan uji yang sama).
 - Resi memuat identitas usaha (konsisten aturan "identitas hanya di nota"),
   ringkasan pekerjaan, pembayaran, sisa tagihan, dan blok LUNAS bila lunas.
 

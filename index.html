@@ -477,18 +477,21 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
     grid-column: 1 / -1; max-width: 680px; width: 100%; margin: 0 auto;
   }
 }
-/* v29: resi thermal 58/80 mm — hanya tampil saat print */
-#resiPrint { display: none; font: 10px/1.5 "Courier New", Courier, monospace; color: #000; background: #fff; width: 48mm; padding: 2mm 1mm 6mm; }
-#resiPrint.w80 { width: 72mm; }
+/* v29: resi thermal 58/80 mm — hanya tampil saat print.
+   Head thermal 1-bit: font tipis tercetak abu/putus, jadi pakai sans tebal.
+   @page = AREA CETAK (48/72 mm), bukan lebar kertas; konten mengisi penuh. */
+#resiPrint { display: none; font: 600 12px/1.45 Arial, Helvetica, sans-serif; color: #000; background: #fff; padding: 1mm 2mm 6mm; }
+#resiPrint.w80 { font-size: 13px; }
 #resiPrint .r-c { text-align: center; }
 #resiPrint .r-b { font-weight: 700; }
-#resiPrint .r-big { font-size: 12px; font-weight: 700; }
-#resiPrint .r-hr { border-top: 1px dashed #000; margin: 4px 0; }
+#resiPrint .r-big { font-size: 15px; font-weight: 700; }
+#resiPrint.w80 .r-big { font-size: 17px; }
+#resiPrint .r-hr { border-top: 2px dashed #000; margin: 5px 0; }
 #resiPrint .r-row { display: flex; justify-content: space-between; gap: 6px; }
-#resiPrint .r-lunas { border: 2px solid #000; text-align: center; font-weight: 700; font-size: 13px; padding: 3px 0; margin: 5px 0; letter-spacing: 2px; }
+#resiPrint .r-lunas { border: 2.5px solid #000; text-align: center; font-weight: 700; font-size: 16px; padding: 4px 0; margin: 6px 0; letter-spacing: 3px; }
 @media print {
   body.print-resi > :not(#resiPrint) { display: none !important; }
-  body.print-resi #resiPrint { display: block; }
+  body.print-resi #resiPrint { display: block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 </style>
 </head>
@@ -2321,7 +2324,10 @@ window.finTab = function (pane) {
 function renderFinance() {
   const now = new Date();
   const years = new Set([now.getFullYear()]);
-  POS.orders.forEach(o => years.add(new Date(o.createdAt).getFullYear()));
+  POS.orders.forEach(o => {
+    years.add(new Date(o.createdAt).getFullYear());
+    (o.payments || []).forEach(p => years.add(new Date(p.ts).getFullYear())); // pelunasan bisa jatuh di tahun berikutnya
+  });
   POS.expenses.forEach(e => years.add(expYm(e)[0]));
   const ySel = byId("rptYear"), keep = parseInt(ySel.value);
   ySel.innerHTML = [...years].sort((a, b) => b - a).map(y => `<option value="${y}">${y}</option>`).join("");
@@ -2456,7 +2462,7 @@ function resiHtml(o) {
     ${b.address ? `<div class="r-c">${esc(b.address)}</div>` : ""}
     ${b.phone ? `<div class="r-c">Telp/WA ${esc(b.phone)}</div>` : ""}
     <div class="r-hr"></div>
-    <div class="r-b">${esc(o.no)}</div>
+    <div class="r-big">${esc(o.no)}</div>
     <div>${tgl(o.createdAt)} &middot; ${STATUS_LBL[o.status]}</div>
     <div>Klien: ${esc(c ? c.name : "-")}</div>
     <div class="r-hr"></div>
@@ -2481,7 +2487,8 @@ window.posPrintResi = function () {
   const el = byId("resiPrint");
   el.className = wmm === 80 ? "w80" : "";
   el.innerHTML = resiHtml(o);
-  byId("resiPageStyle").textContent = `@page { size: ${wmm}mm auto; margin: 0; }`;
+  // area cetak efektif printer thermal: kertas 58 -> 48 mm, kertas 80 -> 72 mm
+  byId("resiPageStyle").textContent = `@page { size: ${wmm === 80 ? 72 : 48}mm auto; margin: 0; }`;
   document.body.classList.add("print-resi");
   const done = () => { document.body.classList.remove("print-resi"); window.removeEventListener("afterprint", done); };
   window.addEventListener("afterprint", done);

@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (63 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (85 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -22,8 +22,9 @@ Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
 2. **Lapisan nav (v26)** — wizard 3 langkah (mobile) / workbench 2 panel (desktop ≥980px),
    registry `SCREENS`, `showScreen` diekspos sebagai `window.navScreen`,
    hook `window.onScreenChange`.
-3. **Lapisan POS (v27)** — order, klien, stok, identitas usaha, nota PDF.
-   IIFE; fungsi publik ditempel ke `window.*`.
+3. **Lapisan POS (v27-v28)** — order, klien, stok, identitas usaha, nota PDF,
+   keuangan (pengeluaran + laporan omzet/profit). IIFE; fungsi publik ditempel
+   ke `window.*`.
 
 Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`, `esc`,
 `showToast`, `askConfirm`) BISA diakses dari blok berikutnya, tapi TIDAK muncul di
@@ -33,11 +34,13 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
 
 - **localStorage**: `printcalc_settings_v3` (SET: mesin, kertas+gsm, druk, dsb),
   `printcalc_lastsel`.
-- **IndexedDB `printcalc_pos` versi 2**: `orders` (autoInc id), `clients` (autoInc id),
-  `meta` (key), `stock` (key = nama kertas).
+- **IndexedDB `printcalc_pos` versi 3**: `orders` (autoInc id), `clients` (autoInc id),
+  `meta` (key), `stock` (key = nama kertas), `expenses` (autoInc id).
   Naikkan versi DB + `onupgradeneeded` bila menambah store.
 - `meta` berisi: counter nomor order `seq-YYMM`, `lastBackup`, `biz` {name,address,phone},
   `logo` {dataUrl,w,h}, `sign` {dataUrl,w,h}.
+- `expenses` berisi: {date "YYYY-MM-DD", cat (teks bebas), amt, note, hpp (bool
+  "sudah terhitung HPP order"), ts}.
 
 ## Invarian (jangan dilanggar)
 
@@ -55,6 +58,10 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   ikuti pola yang ada saat menambah objek.
 - **Identitas usaha hanya di nota** (PDF + teks WA). Teks penawaran ke klien
   TETAP tanpa identitas (keputusan v25).
+- **Laporan keuangan**: profit bersih = nilai order − HPP snapshot − pengeluaran
+  operasional. Pengeluaran bertanda `hpp` (belanja bahan) hanya masuk arus kas,
+  TIDAK dikurangkan lagi ke profit (mencegah dobel hitung dgn HPP order).
+  Kategori pengeluaran teks bebas — keputusan Toby, jangan diganti dropdown.
 
 ## Aturan bisnis percetakan (jangan "diperbaiki")
 
@@ -87,4 +94,5 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
 v1-v17 kalkulator (chat) → v18-v22 redesign → PrintCalc Pro arah SaaS →
 v23 fitur komersial → v24 wizard → v25 berat kertas → v26 adaptif
 mobile/desktop → v27 POS (order, klien, stok, nota PDF ber-logo/watermark/ttd/
-stempel LUNAS). Detail keputusan: `docs/KEPUTUSAN.md`.
+stempel LUNAS) → v28 keuangan (pengeluaran kategori bebas + laporan omzet/
+profit bulanan-tahunan + piutang). Detail keputusan: `docs/KEPUTUSAN.md`.

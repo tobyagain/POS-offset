@@ -38,6 +38,10 @@ function boot({ width = 390, idb } = {}) {
       w.HTMLAnchorElement.prototype.click = function () { w.__downloaded = this.download; };
       w.scrollTo = noop;
       w.HTMLElement.prototype.scrollIntoView = noop;
+      // jsdom belum punya Blob.text() -> polyfill lewat FileReader bawaan jsdom
+      if (!w.Blob.prototype.text) w.Blob.prototype.text = function () {
+        return new Promise((res, rej) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsText(this); });
+      };
     }
   });
   return dom.window;

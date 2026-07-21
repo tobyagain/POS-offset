@@ -130,6 +130,24 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   diganti walau nama tampilan berubah — mengubahnya = data tim hilang & backup
   lama tak bisa di-import.
 
+## Order multi-item (v35)
+- Kebutuhan nyata: klien pesan beberapa ukuran/kertas dalam satu order.
+- Model: `o.items[]` (tiap item snapshot kalkulasi sendiri). Order lama
+  (`o.calc` tunggal) dibungkus jadi 1 item lewat `orderItems(o)` — TANPA
+  migrasi; `o.calc`/`o.inputs` disimpan sebagai cermin item pertama.
+- Cara menambah: **keranjang draft dari kalkulator** (keputusan Toby). Hitung
+  1 item → "Tambah ke order" → hitung item berikut → tambah → "Buat order"
+  sekali (klien, deadline, DP). Order 1 item = alur lama, tak berubah.
+- Harga total = jumlah subtotal item, tetap bisa di-override (diskon/bulat).
+- HPP order = jumlah HPP item → laporan profit otomatis benar.
+- Stok: tiap item mengurangi kertasnya masing-masing; dikembalikan saat hapus.
+  Item "kertas klien" tak menyentuh stok.
+- Nota/resi/detail menampilkan tiap item + subtotal, lalu total.
+- Repeat multi-item: **susun ulang semua item** ke draft, dihitung ulang tarif
+  sekarang (keputusan Toby). Aman dari dialog gripper karena config yang sudah
+  valid tak memicu reminder.
+- Order partner tetap 1 item (makloon = 1 harga borongan).
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

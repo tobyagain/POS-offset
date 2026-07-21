@@ -486,6 +486,10 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
     grid-column: 1 / -1; max-width: 680px; width: 100%; margin: 0 auto;
   }
 }
+/* v35: indikator draft order multi-item */
+.cart-ind { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: var(--brand-soft); color: var(--brand-strong); border: 1px solid oklch(88% 0.04 245);
+  border-radius: var(--r-field); padding: 8px 12px; margin: 10px 0 0; font-size: 12.5px; font-weight: 600; }
 /* v32: banner pengingat backup (bukan modal — tak membajak dialog konfirmasi) */
 .backup-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   background: var(--danger-soft); color: var(--danger); border: 1px solid oklch(85% 0.07 27);
@@ -685,8 +689,10 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
           <div class="unit-row">Harga jual / pcs: <b id="fUnit"></b></div>
           <div class="btn-row">
             <button class="btn-ghost" onclick="shareClient()">Kirim penawaran<small>untuk client &middot; tanpa HPP</small></button>
+            <button class="btn-ghost" onclick="cartAdd()">+ Tambah ke order<small>gabung beberapa ukuran / kertas</small></button>
           </div>
-          <button class="btn-primary" onclick="openNewOrder()">&#10003; Klien ACC &mdash; jadikan order</button>
+          <div id="cartInd" class="cart-ind" hidden></div>
+          <button class="btn-primary" id="btnMakeOrder" onclick="openNewOrder()">&#10003; Klien ACC &mdash; jadikan order</button>
         </div>
 
         <div class="card" id="compareCard" style="display:none">
@@ -1948,6 +1954,17 @@ function jobSummary(c) {
   const bahan = String(c.paper || "").split(" (")[0];
   return `${bahan}${c.paperByClient ? " (kertas klien)" : ""} · ${c.pW}×${c.pH} cm · ${Number(c.qty).toLocaleString("id-ID")} pcs · ${c.colorCount} warna`;
 }
+// v35: order bisa >1 item. Order lama (o.calc tunggal) dibungkus jadi 1 item —
+// tak perlu migrasi. Semua tampilan (kartu/detail/nota/resi/laporan) loop lewat ini.
+function orderItems(o) {
+  return (o.items && o.items.length) ? o.items : [{ calc: o.calc, inputs: o.inputs, price: o.price }];
+}
+function orderHpp(o) { return orderItems(o).reduce((s, it) => s + ((it.calc && it.calc.hppTotal) || 0), 0); }
+// Ringkasan untuk kartu daftar/riwayat: item pertama + jumlah sisanya.
+function orderSummary(o) {
+  const its = orderItems(o);
+  return esc(jobSummary(its[0].calc)) + (its.length > 1 ? ` <b>+${its.length - 1} item</b>` : "");
+}
 async function nextOrderNo() {
   const now = new Date();
   const ym = String(now.getFullYear()).slice(2) + String(now.getMonth() + 1).padStart(2, "0");
@@ -2009,7 +2026,7 @@ function renderOrders() {
     return `<div class="ocard" onclick="posOpenOrder(${o.id})">
       <div class="ocard-top"><b>${esc(o.no)}</b><span style="display:flex;gap:5px">${o.calc.partner ? '<span class="badge pay-dp">Partner</span>' : ""}<span class="badge st-${o.status}">${STATUS_LBL[o.status]}</span></span></div>
       <div class="ocard-name">${esc(clientName(o))}</div>
-      <div class="ocard-sub">${esc(jobSummary(o.calc))}</div>
+      <div class="ocard-sub">${orderSummary(o)}</div>
       <div class="ocard-bot"><span class="badge ${pc}">${pl}</span>
         ${o.deadline ? `<span class="ddl${isLate(o) ? " late" : ""}">${isLate(o) ? "Lewat deadline · " : "Deadline "}${fmtDate(o.deadline)}</span>` : ""}
         <b>${rp(o.price)}</b></div>
@@ -2028,6 +2045,23 @@ window.posOpenOrder = function (id) {
   const c = clientOf(o);
   const [pl, pc] = payBadge(o);
   const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
+  const its = orderItems(o), multiItem = its.length > 1, itsTotal = its.reduce((s, it) => s + it.price, 0);
+  const detailRows = cc =>
+    `<div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">Cetak ${cc.pW}×${cc.pH} cm, ${cc.colorCount} warna</strong></div>
+     <div class="row"><span class="lbl">Bahan</span><span class="dots"></span><strong class="val">${esc(cc.paper)}${cc.paperByClient ? " — dari klien" : ""}</strong></div>
+     <div class="row"><span class="lbl">Mesin</span><span class="dots"></span><strong class="val">${esc(cc.mName)}</strong></div>
+     <div class="row"><span class="lbl">Oplah</span><span class="dots"></span><strong class="val">${Number(cc.qty).toLocaleString("id-ID")} pcs</strong></div>
+     <div class="row"><span class="lbl">Mata / plano</span><span class="dots"></span><strong class="val">${cc.mata} up · ${cc.totalPlano} plano</strong></div>`;
+  const workHtml = o.calc.partner
+    ? `<div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">${esc(o.calc.desc)}</strong></div>
+       ${o.calc.qty ? `<div class="row"><span class="lbl">Jumlah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>` : ""}
+       ${o.partner && o.partner.name ? `<div class="row"><span class="lbl">Dikerjakan oleh</span><span class="dots"></span><strong class="val">${esc(o.partner.name)}</strong></div>` : ""}
+       <div class="row"><span class="lbl">Modal partner</span><span class="dots"></span><strong class="val">${rp(o.calc.hppTotal)}</strong></div>
+       <div class="row"><span class="lbl">Profit</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp(o.price - o.calc.hppTotal)}</strong></div>`
+    : multiItem
+    ? its.map((it, i) => `<div class="row" style="border-bottom:0;padding-bottom:0;margin-top:${i ? 12 : 0}px"><span class="lbl" style="font-weight:800;color:var(--text)">Item ${i + 1}</span><span class="val"><b>${rp(it.price)}</b></span></div>${detailRows(it.calc)}`).join("") +
+      `<div class="row" style="border-top:1px solid var(--border);margin-top:8px"><span class="lbl"><b>Subtotal ${its.length} item</b></span><span class="val"><b>${rp(itsTotal)}</b></span></div>`
+    : detailRows(o.calc);
   byId("odBody").innerHTML = `
     <div class="card">
       <p class="card-title">Klien</p>
@@ -2038,20 +2072,8 @@ window.posOpenOrder = function (id) {
       ${o.deadline ? `<div class="row"><span class="lbl">Deadline</span><span class="dots"></span><strong class="val"${isLate(o) ? ' style="color:var(--danger)"' : ""}>${fmtDate(o.deadline)}</strong></div>` : ""}
     </div>
     <div class="card">
-      <p class="card-title t-mag">Pekerjaan${o.calc.partner ? ' <span class="badge pay-dp">Partner</span>' : ""}</p>
-      ${o.calc.partner ? `
-      <div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">${esc(o.calc.desc)}</strong></div>
-      ${o.calc.qty ? `<div class="row"><span class="lbl">Jumlah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>` : ""}
-      ${o.partner && o.partner.name ? `<div class="row"><span class="lbl">Dikerjakan oleh</span><span class="dots"></span><strong class="val">${esc(o.partner.name)}</strong></div>` : ""}
-      <div class="row"><span class="lbl">Modal partner</span><span class="dots"></span><strong class="val">${rp(o.calc.hppTotal)}</strong></div>
-      <div class="row"><span class="lbl">Profit</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp(o.price - o.calc.hppTotal)}</strong></div>
-      ` : `
-      <div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">Cetak ${o.calc.pW}×${o.calc.pH} cm, ${o.calc.colorCount} warna</strong></div>
-      <div class="row"><span class="lbl">Bahan</span><span class="dots"></span><strong class="val">${esc(o.calc.paper)}${o.calc.paperByClient ? " — dari klien" : ""}</strong></div>
-      <div class="row"><span class="lbl">Mesin</span><span class="dots"></span><strong class="val">${esc(o.calc.mName)}</strong></div>
-      <div class="row"><span class="lbl">Oplah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>
-      <div class="row"><span class="lbl">Mata / plano</span><span class="dots"></span><strong class="val">${o.calc.mata} up · ${o.calc.totalPlano} plano</strong></div>
-      `}
+      <p class="card-title t-mag">Pekerjaan${o.calc.partner ? ' <span class="badge pay-dp">Partner</span>' : multiItem ? ` <span class="badge st-order">${its.length} item</span>` : ""}</p>
+      ${workHtml}
       ${o.designNote ? `<div class="row"><span class="lbl">Desain / file</span><span class="dots"></span><strong class="val">${esc(o.designNote)}</strong></div>` : ""}
       ${o.prev ? `<div class="oldprice">Repeat dari ${esc(o.prev.no)} — harga sebelumnya ${rp(o.prev.price)}</div>` : ""}
       <div class="form-group" style="margin-top:12px"><label>Status pengerjaan</label>
@@ -2117,7 +2139,11 @@ window.posDelOrder = async function () {
   if (!ok) return;
   await idbDel("orders", o.id);
   POS.orders = POS.orders.filter(x => x.id !== o.id);
-  if (!o.calc.paperByClient && !o.calc.partner) await stockApply(o.inputs && o.inputs.paper, o.calc.totalPlano, "batal " + o.no);
+  if (!o.calc.partner) {
+    for (const it of orderItems(o)) {
+      if (it.calc && !it.calc.paperByClient) await stockApply(it.inputs && it.inputs.paper, it.calc.totalPlano, "batal " + o.no);
+    }
+  }
   showToast("🗑️ Order dihapus");
   navGo("orders");
 };
@@ -2128,8 +2154,11 @@ window.posShareNota = function () {
   const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
   const b = POS.meta.biz || {};
   const kop = b.name ? `*${b.name}*${b.address ? "\n" + b.address : ""}${b.phone ? "\nTelp: " + b.phone : ""}\n================================\n` : "";
+  const its = orderItems(o), multiItem = its.length > 1;
   const itemTxt = o.calc.partner
     ? `Item: ${o.calc.desc}${o.calc.qty ? "\nJumlah: " + Number(o.calc.qty).toLocaleString("id-ID") + " pcs" : ""}`
+    : multiItem
+    ? its.map((it, i) => `${i + 1}. Cetak ${it.calc.pW} × ${it.calc.pH} cm, ${it.calc.colorCount} warna — ${String(it.calc.paper).split(" (")[0]}${it.calc.paperByClient ? " (kertas klien)" : ""}, ${Number(it.calc.qty).toLocaleString("id-ID")} pcs — ${rp(it.price)}`).join("\n")
     : `Item: Cetak ${o.calc.pW} × ${o.calc.pH} cm, ${o.calc.colorCount} warna
 Bahan: ${o.calc.paper}${o.calc.paperByClient ? " (disediakan klien)" : ""}
 Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs`;
@@ -2180,7 +2209,7 @@ window.posOpenClient = function (id) {
       const [pl, pc] = payBadge(o);
       return `<div class="ocard" onclick="posOpenOrder(${o.id})">
         <div class="ocard-top"><b>${esc(o.no)}</b><span class="badge st-${o.status}">${STATUS_LBL[o.status]}</span></div>
-        <div class="ocard-sub">${esc(jobSummary(o.calc))}</div>
+        <div class="ocard-sub">${orderSummary(o)}</div>
         <div class="ocard-bot"><span class="badge ${pc}">${pl}</span><b>${rp(o.price)}</b></div>
       </div>`;
     }).join("") : `<div class="pos-empty">Belum ada order.</div>`}`;
@@ -2197,33 +2226,79 @@ window.posSaveClient = async function () {
   posOpenClient(c.id);
 };
 
+// ---- keranjang draft order multi-item (v35) ----
+let CART = [];        // item draft: {calc, inputs, price}
+let ORDER_ITEMS = []; // item yang sedang difinalisasi di layar order baru
+function snapshotItem() {
+  const mSel = byId("machineType"), pSel = byId("paperType");
+  return {
+    calc: JSON.parse(JSON.stringify(lastCalc)),
+    inputs: {
+      machine: (SET.machines[parseInt(mSel.value)] || {}).name || "",
+      paper: (SET.papers[parseInt(pSel.value)] || {}).name || "",
+      pW: lastCalc.pW, pH: lastCalc.pH, colors: lastCalc.colorCount,
+      gripper: byId("useGripper").checked, qty: lastCalc.qty,
+      paperByClient: !!lastCalc.paperByClient,
+      baseProfit: parseInt(byId("baseProfit").value) || 0,
+      markup: parseFloat(byId("markup").value) || 0
+    },
+    price: Math.round(lastCalc.totalOffer)
+  };
+}
+window.cartAdd = function () {
+  if (typeof lastCalc === "undefined" || !lastCalc) { showToast("⚠️ Hitung kalkulasi dulu", "err"); return; }
+  CART.push(snapshotItem());
+  updateCartIndicator();
+  showToast("✔️ Item " + CART.length + " ditambahkan ke draft order");
+};
+window.cartClear = function () { CART = []; updateCartIndicator(); showToast("🗑️ Draft order dikosongkan"); };
+function updateCartIndicator() {
+  const el = byId("cartInd"), btn = byId("btnMakeOrder");
+  if (el) {
+    if (!CART.length) el.hidden = true;
+    else {
+      const tot = CART.reduce((s, it) => s + it.price, 0);
+      el.hidden = false;
+      el.innerHTML = `📝 Draft order: <b>${CART.length} item</b> · ${rp(tot)} <button onclick="cartClear()" style="margin-left:auto;border:0;background:none;color:var(--brand-strong);font-weight:700;cursor:pointer;padding:2px 4px">buang</button>`;
+    }
+  }
+  if (btn) btn.innerHTML = CART.length ? `&#10003; Buat order (${CART.length} item)` : "&#10003; Klien ACC &mdash; jadikan order";
+}
+// Catatan stok satu item (dipakai untuk order 1 item — detail; & ringkas untuk multi).
+function itemStockNote(inp, calc, compact) {
+  const pName = inp.paper || "";
+  if (calc.paperByClient) return `<div class="stk-ok">Kertas disediakan klien — stok tidak dipakai${pName ? " · " + esc(pName) : ""}. Klien siapkan <b>${calc.totalPlano.toLocaleString("id-ID")} plano</b>.</div>`;
+  const st = stockOf(pName), sisa = st ? st.qty : 0, unit = stockUnit(st);
+  const butuh = calc.totalPlano, setelah = sisa - butuh;
+  if (compact) return `<div class="${setelah < 0 ? "stk-warn" : "stk-ok"}">${esc(pName)}: butuh <b>${butuh.toLocaleString("id-ID")}</b> · stok ${sisa.toLocaleString("id-ID")} → ${setelah < 0 ? "kurang <b>" + Math.abs(setelah).toLocaleString("id-ID") + "</b>" : "sisa <b>" + setelah.toLocaleString("id-ID") + "</b>"} lembar</div>`;
+  return setelah < 0
+    ? `<div class="stk-warn">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → kurang <b>${Math.abs(setelah).toLocaleString("id-ID")} lembar</b>.<br>Saran: ${beliSaran(Math.abs(setelah), unit)} — sisa nanti ${(setelah + Math.ceil(Math.abs(setelah) / unit) * unit).toLocaleString("id-ID")} lembar. Catat di tab Stok saat barang datang.</div>`
+    : `<div class="stk-ok">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → sisa setelah order <b>${setelah.toLocaleString("id-ID")} lembar</b> (${rimText(setelah, unit)}).</div>`;
+}
+
 // ---- order baru (ACC) ----
 window.openNewOrder = function () {
-  if (typeof lastCalc === "undefined" || !lastCalc) { showToast("⚠️ Hitung kalkulasi dulu", "err"); return; }
+  ORDER_ITEMS = CART.length ? CART.slice() : (lastCalc ? [snapshotItem()] : []);
+  if (!ORDER_ITEMS.length) { showToast("⚠️ Hitung kalkulasi dulu", "err"); return; }
+  const multi = ORDER_ITEMS.length > 1;
+  const total = ORDER_ITEMS.reduce((s, it) => s + it.price, 0);
   byId("noCalcSum").innerHTML =
-    `<b>${esc(jobSummary(lastCalc))}</b><br>Mesin ${esc(lastCalc.mName)} · ${lastCalc.mata} up · ${lastCalc.totalPlano} plano · penawaran <b>${rp(lastCalc.totalOffer)}</b>`;
+    ORDER_ITEMS.map((it, i) => `<div class="row" style="padding:4px 0"><span class="lbl">${multi ? "Item " + (i + 1) + ": " : ""}${esc(jobSummary(it.calc))}</span><span class="val">${rp(it.price)}</span></div>`).join("") +
+    (multi ? `<div class="row" style="border-top:1px solid var(--border);border-bottom:0;padding-top:7px;margin-top:2px"><span class="lbl"><b>Total ${ORDER_ITEMS.length} item</b></span><span class="val"><b>${rp(total)}</b></span></div>` : "");
   const sel = byId("noClientSel");
   sel.innerHTML = `<option value="">— Klien baru —</option>` +
     [...POS.clients].sort((a, b) => a.name.localeCompare(b.name, "id"))
       .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
   ["noName", "noPhone", "noAddr", "noDesign", "noDeadline", "noDP"].forEach(id => { byId(id).value = ""; });
-  byId("noPrice").value = Math.round(lastCalc.totalOffer);
-  const pName = (SET.papers[parseInt(byId("paperType").value)] || {}).name || "";
-  const st = stockOf(pName);
-  const sisa = st ? st.qty : 0;
-  const unit = stockUnit(st);
-  const butuh = lastCalc.totalPlano;
-  const setelah = sisa - butuh;
-  byId("noStockInfo").innerHTML = lastCalc.paperByClient
-    ? `<div class="stk-ok">Kertas disediakan klien — stok tidak dipakai. Klien perlu menyiapkan <b>${butuh.toLocaleString("id-ID")} plano</b> ${esc(pName)}.</div>`
-    : setelah < 0
-    ? `<div class="stk-warn">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → kurang <b>${Math.abs(setelah).toLocaleString("id-ID")} lembar</b>.<br>Saran: ${beliSaran(Math.abs(setelah), unit)} — sisa nanti ${(setelah + Math.ceil(Math.abs(setelah) / unit) * unit).toLocaleString("id-ID")} lembar. Catat di tab Stok saat barang datang.</div>`
-    : `<div class="stk-ok">Stok ${esc(pName)}: <b>${sisa.toLocaleString("id-ID")} lembar</b> · order ini butuh <b>${butuh.toLocaleString("id-ID")}</b> → sisa setelah order <b>${setelah.toLocaleString("id-ID")} lembar</b> (${rimText(setelah, unit)}).</div>`;
+  byId("noPrice").value = total;
+  byId("noStockInfo").innerHTML = multi
+    ? ORDER_ITEMS.map((it, i) => `<div style="margin-bottom:6px"><span class="set-hint" style="font-weight:700">Item ${i + 1}</span>${itemStockNote(it.inputs, it.calc, true)}</div>`).join("")
+    : itemStockNote(ORDER_ITEMS[0].inputs, ORDER_ITEMS[0].calc, false);
   const ob = byId("noOldPrice");
   if (REPEAT) {
     sel.value = String(REPEAT.clientId);
     ob.hidden = false;
-    ob.innerHTML = `Repeat dari <b>${esc(REPEAT.prevNo)}</b> — harga sebelumnya <b>${rp(REPEAT.prevPrice)}</b>, harga sekarang <b>${rp(lastCalc.totalOffer)}</b>. Ubah kolom harga jika ingin pakai harga lama.`;
+    ob.innerHTML = `Repeat dari <b>${esc(REPEAT.prevNo)}</b> — harga sebelumnya <b>${rp(REPEAT.prevPrice)}</b>, harga sekarang <b>${rp(total)}</b>. Ubah kolom harga jika ingin pakai harga lama.`;
   } else { ob.hidden = true; }
   onClientSelChange();
   navScreen("norder");
@@ -2236,7 +2311,7 @@ window.onClientSelChange = function () {
   else { byId("noName").value = ""; byId("noPhone").value = ""; byId("noAddr").value = ""; }
 };
 window.saveNewOrder = async function () {
-  if (!dbGuard() || !lastCalc) return;
+  if (!dbGuard() || !ORDER_ITEMS.length) return;
   clearErr("noName"); clearErr("noPrice"); clearErr("noDP");
   const selVal = byId("noClientSel").value;
   const name = byId("noName").value.trim();
@@ -2256,7 +2331,7 @@ window.saveNewOrder = async function () {
     POS.clients.push(c);
     clientId = c.id;
   }
-  const mSel = byId("machineType"), pSel = byId("paperType");
+  const items = ORDER_ITEMS.map(it => JSON.parse(JSON.stringify(it)));
   const o = {
     no: await nextOrderNo(),
     clientId, createdAt: Date.now(),
@@ -2266,20 +2341,17 @@ window.saveNewOrder = async function () {
     price,
     designNote: byId("noDesign").value.trim(),
     prev: REPEAT ? { no: REPEAT.prevNo, price: REPEAT.prevPrice } : null,
-    calc: JSON.parse(JSON.stringify(lastCalc)),
-    inputs: {
-      machine: (SET.machines[parseInt(mSel.value)] || {}).name || "",
-      paper: (SET.papers[parseInt(pSel.value)] || {}).name || "",
-      pW: lastCalc.pW, pH: lastCalc.pH, colors: lastCalc.colorCount,
-      gripper: byId("useGripper").checked, qty: lastCalc.qty,
-      paperByClient: !!lastCalc.paperByClient,
-      baseProfit: parseInt(byId("baseProfit").value) || 0,
-      markup: parseFloat(byId("markup").value) || 0
-    }
+    items,
+    // cermin item pertama — kompatibilitas pembaca lama & jalur stok
+    calc: items[0].calc,
+    inputs: items[0].inputs
   };
   o.id = await idbPut("orders", o);
   POS.orders.push(o);
-  if (!o.calc.paperByClient) await stockApply(o.inputs.paper, -o.calc.totalPlano, o.no);
+  for (const it of items) {
+    if (!it.calc.paperByClient) await stockApply(it.inputs.paper, -it.calc.totalPlano, o.no);
+  }
+  CART = []; updateCartIndicator();
   REPEAT = null; byId("repeatBanner").hidden = true;
   showToast("✔️ Order " + o.no + " tersimpan");
   maybeBackupNudge();
@@ -2287,6 +2359,22 @@ window.saveNewOrder = async function () {
 };
 
 // ---- repeat order ----
+// Isi form kalkulator dari inputs 1 item; balikan false bila mesin/kertas hilang.
+function applyItemToForm(inp) {
+  const mi = SET.machines.findIndex(m => m.name === inp.machine);
+  const pi = SET.papers.findIndex(p => p.name === inp.paper);
+  if (mi >= 0) byId("machineType").value = String(mi);
+  if (pi >= 0) byId("paperType").value = String(pi);
+  byId("pW").value = inp.pW; byId("pH").value = inp.pH;
+  byId("colors").value = String(inp.colors || 1);
+  byId("useGripper").checked = inp.gripper !== false;
+  byId("paperByClient").checked = !!inp.paperByClient;
+  byId("qty").value = inp.qty; byId("qtyAlt").value = "";
+  if (inp.baseProfit) byId("baseProfit").value = inp.baseProfit;
+  if (inp.markup || inp.markup === 0) byId("markup").value = inp.markup;
+  if (typeof updateData === "function") updateData();
+  return mi >= 0 && pi >= 0;
+}
 window.posRepeat = function (id) {
   const o = POS.orders.find(x => x.id === id);
   if (!o) return;
@@ -2300,22 +2388,22 @@ window.posRepeat = function (id) {
     });
     return;
   }
-  const inp = o.inputs || {};
-  const mi = SET.machines.findIndex(m => m.name === inp.machine);
-  const pi = SET.papers.findIndex(p => p.name === inp.paper);
-  if (mi >= 0) byId("machineType").value = String(mi);
-  if (pi >= 0) byId("paperType").value = String(pi);
-  if (mi < 0 || pi < 0) showToast("⚠️ Mesin/kertas order lama tidak ada lagi di pengaturan — periksa pilihan", "err");
-  byId("pW").value = inp.pW; byId("pH").value = inp.pH;
-  byId("colors").value = String(inp.colors || 1);
-  byId("useGripper").checked = inp.gripper !== false;
-  byId("paperByClient").checked = !!inp.paperByClient;
-  byId("qty").value = inp.qty; byId("qtyAlt").value = "";
-  if (inp.baseProfit) byId("baseProfit").value = inp.baseProfit;
-  if (inp.markup || inp.markup === 0) byId("markup").value = inp.markup;
-  if (typeof updateData === "function") updateData();
+  const items = orderItems(o);
   REPEAT = { clientId: o.clientId, prevNo: o.no, prevPrice: o.price };
   const rb = byId("repeatBanner");
+  if (items.length > 1) {
+    // Multi-item: susun ulang semua item ke draft, dihitung dgn tarif sekarang
+    CART = [];
+    let allFound = true;
+    items.forEach(it => { if (!applyItemToForm(it.inputs)) allFound = false; calculate(); CART.push(snapshotItem()); });
+    updateCartIndicator();
+    if (!allFound) showToast("⚠️ Sebagian mesin/kertas order lama tak ada lagi — periksa pilihan", "err");
+    rb.hidden = false;
+    rb.innerHTML = `Repeat order — <b>${esc(clientName(o))}</b> · <b>${items.length} item</b> disusun ulang di draft (harga lama <b>${rp(o.price)}</b>, ${esc(o.no)}). Tekan <b>Buat order</b> untuk lanjut.`;
+    return; // item terakhir sudah tampil di layar hasil + indikator draft aktif
+  }
+  const found = applyItemToForm(items[0].inputs || {});
+  if (!found) showToast("⚠️ Mesin/kertas order lama tidak ada lagi di pengaturan — periksa pilihan", "err");
   rb.hidden = false;
   rb.innerHTML = `Repeat order — <b>${esc(clientName(o))}</b> · harga sebelumnya <b>${rp(o.price)}</b> (${esc(o.no)}). Harga baru dihitung dengan tarif sekarang.`;
   navScreen("form");
@@ -2560,7 +2648,7 @@ function periodAgg(year, month) {
   const a = { cnt: 0, omzet: 0, hpp: 0, kas: 0, expOper: 0, expBahan: 0 };
   POS.orders.forEach(o => {
     const d = new Date(o.createdAt);
-    if (inP(d.getFullYear(), d.getMonth())) { a.cnt++; a.omzet += o.price || 0; a.hpp += (o.calc && o.calc.hppTotal) || 0; }
+    if (inP(d.getFullYear(), d.getMonth())) { a.cnt++; a.omzet += o.price || 0; a.hpp += orderHpp(o); }
     (o.payments || []).forEach(p => { const t = new Date(p.ts); if (inP(t.getFullYear(), t.getMonth())) a.kas += p.amt || 0; });
   });
   POS.expenses.forEach(e => {
@@ -2681,7 +2769,9 @@ function resiHtml(o) {
     ${o.calc.partner ? `
     <div>${esc(o.calc.desc)}</div>
     ${o.calc.qty ? `<div>Jumlah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs</div>` : ""}
-    ` : `
+    ` : orderItems(o).length > 1 ? orderItems(o).map((it, i) => `
+    <div class="r-b">${i + 1}. Cetak ${it.calc.pW}x${it.calc.pH} cm, ${it.calc.colorCount} warna</div>
+    <div>${esc(String(it.calc.paper).split(" (")[0])}${it.calc.paperByClient ? " (dari klien)" : ""} · ${Number(it.calc.qty).toLocaleString("id-ID")} pcs · ${rp(it.price)}</div>`).join("") : `
     <div>Cetak ${o.calc.pW}x${o.calc.pH} cm, ${o.calc.colorCount} warna</div>
     <div>Bahan: ${esc(String(o.calc.paper).split(" (")[0])}${o.calc.paperByClient ? " (dari klien)" : ""}</div>
     <div>Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs</div>
@@ -2930,9 +3020,18 @@ function notaPdfBlob(o) {
     row("Item", o.calc.desc);
     if (o.calc.qty) row("Jumlah", Number(o.calc.qty).toLocaleString("id-ID") + " pcs");
   } else {
-    row("Item", `Cetak ${o.calc.pW} x ${o.calc.pH} cm, ${o.calc.colorCount} warna`);
-    row("Bahan", o.calc.paper + (o.calc.paperByClient ? " (dari klien)" : ""));
-    row("Oplah", Number(o.calc.qty).toLocaleString("id-ID") + " pcs");
+    const nItems = orderItems(o);
+    if (nItems.length > 1) {
+      nItems.forEach((it, i) => {
+        row("Item " + (i + 1), rp(it.price), { bold: true });
+        row("  Cetak", `${it.calc.pW} x ${it.calc.pH} cm, ${it.calc.colorCount} warna`);
+        row("  Bahan", String(it.calc.paper).split(" (")[0] + (it.calc.paperByClient ? " (dari klien)" : "") + " . " + Number(it.calc.qty).toLocaleString("id-ID") + " pcs");
+      });
+    } else {
+      row("Item", `Cetak ${o.calc.pW} x ${o.calc.pH} cm, ${o.calc.colorCount} warna`);
+      row("Bahan", o.calc.paper + (o.calc.paperByClient ? " (dari klien)" : ""));
+      row("Oplah", Number(o.calc.qty).toLocaleString("id-ID") + " pcs");
+    }
   }
   if (o.designNote) row("Desain / file", o.designNote);
   if (o.deadline) row("Estimasi selesai", fmtDate(o.deadline));

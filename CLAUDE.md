@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (155 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (161 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -118,5 +118,6 @@ kirim (penerima/pengirim tanpa harga) → v31 kertas dari klien (jasa cetak
 saja, stok tak berkurang) + order partner (makloon: modal partner = HPP,
 markup utk profit) → v32 pengingat backup (banner "belum di-backup" tiap buka)
 + tombol hapus semua data → v33 poles UI (nav bisa di-scroll, umpan balik
-sentuh di kartu/chip, kontras badge, tombol hapus lebih jelas). Detail
+sentuh di kartu/chip, kontras badge, tombol hapus lebih jelas) → v34 cari
+order (nomor/klien/pekerjaan) + ekspor laporan keuangan PDF. Detail
 keputusan: `docs/KEPUTUSAN.md`.

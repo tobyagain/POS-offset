@@ -122,6 +122,19 @@ async function confirmDialog(w, accept = true) {
   ok(d.getElementById("orderList").textContent.includes("Belum ada order selesai"), "filter Riwayat kosong (order masih aktif)");
   w.setOrderFilter("aktif");
 
+  // Cari order (v34)
+  d.getElementById("orderSearch").value = "toko abc";
+  w.renderOrders();
+  ok(d.querySelectorAll("#orderList .ocard").length === 1, "cari 'toko abc' menemukan order");
+  d.getElementById("orderSearch").value = "ORD-2607-001";
+  w.renderOrders();
+  ok(d.querySelectorAll("#orderList .ocard").length === 1, "cari berdasar nomor order menemukan order");
+  d.getElementById("orderSearch").value = "zzz tidak ada";
+  w.renderOrders();
+  ok(d.getElementById("orderList").textContent.includes("Tidak ada order yang cocok"), "cari tak cocok -> empty state pencarian");
+  d.getElementById("orderSearch").value = "";
+  w.renderOrders();
+
   // Status & pembayaran
   d.querySelector("#orderList .ocard").click();
   await tick();

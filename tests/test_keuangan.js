@@ -37,6 +37,7 @@ function boot({ width = 390, idb } = {}) {
       w.HTMLAnchorElement.prototype.click = function () { w.__downloaded = this.download; };
       w.scrollTo = noop;
       w.HTMLElement.prototype.scrollIntoView = noop;
+      w.TextEncoder = TextEncoder; // jsdom VM tak punya TextEncoder (dipakai perakit PDF); browser punya
       // jsdom belum punya Blob.text() -> polyfill lewat FileReader bawaan jsdom
       if (!w.Blob.prototype.text) w.Blob.prototype.text = function () {
         return new Promise((res, rej) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsText(this); });
@@ -122,6 +123,12 @@ async function confirmDialog(w, accept = true) {
   w.renderReport();
   ok(d.getElementById("rptBody").textContent.includes("Profit per bulan") && d.getElementById("rptBody").textContent.includes("omzet"), "mode setahun: rincian profit per bulan tampil");
   ok(num(d.getElementById("rptOmzet").textContent) === price, "mode setahun: omzet tahunan benar");
+
+  // Ekspor laporan PDF (v34)
+  await w.exportReportPdf(); await tick();
+  ok(String(w.__downloaded || "").startsWith("laporan-"), "ekspor laporan PDF mengunduh file");
+  ok(w.__lastBlob && w.__lastBlob.type === "application/pdf", "berkas laporan bertipe PDF");
+  ok((await w.__lastBlob.text()).startsWith("%PDF-"), "berkas laporan berupa PDF valid (header %PDF)");
 
   // Hapus pengeluaran (konfirmasi) -> laporan ikut berubah
   const delBtn = [...d.querySelectorAll("#expList .ocard")].find(c => c.textContent.includes("Listrik")).querySelector("button");

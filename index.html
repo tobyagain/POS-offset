@@ -778,6 +778,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       <button class="chip" data-f="riwayat" onclick="setOrderFilter('riwayat')">Riwayat</button>
       <button class="chip" data-f="semua" onclick="setOrderFilter('semua')">Semua</button>
     </div>
+    <div class="form-group"><input type="text" id="orderSearch" placeholder="Cari nomor order / klien / pekerjaan&hellip;" oninput="renderOrders()"></div>
     <div id="orderList"></div>
   </section>
 
@@ -816,6 +817,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <div class="form-group"><label>Tahun</label><select id="rptYear" onchange="renderReport()"></select></div>
       </div>
       <div id="rptBody"></div>
+      <button class="btn-ghost" onclick="exportReportPdf()">Ekspor laporan PDF<small>ringkasan periode untuk arsip / setoran</small></button>
     </div>
     <div id="finKeluar" hidden>
       <div class="card">
@@ -1994,10 +1996,12 @@ function sortedOrders() {
 }
 function renderOrders() {
   const list = byId("orderList");
-  const rows = sortedOrders().filter(o =>
-    orderFilter === "semua" ? true : (orderFilter === "riwayat" ? o.status === "diambil" : o.status !== "diambil"));
+  const q = (byId("orderSearch").value || "").trim().toLowerCase();
+  const rows = sortedOrders()
+    .filter(o => orderFilter === "semua" ? true : (orderFilter === "riwayat" ? o.status === "diambil" : o.status !== "diambil"))
+    .filter(o => !q || [o.no, clientName(o), jobSummary(o.calc)].join(" ").toLowerCase().includes(q));
   if (!rows.length) {
-    list.innerHTML = `<div class="pos-empty">${orderFilter === "riwayat" ? "Belum ada order selesai-diambil." : "Belum ada order aktif.<br>Mulai dari <b>Kalkulator</b> → kirim penawaran → klien ACC → <b>jadikan order</b>."}</div>`;
+    list.innerHTML = `<div class="pos-empty">${q ? "Tidak ada order yang cocok dengan pencarian." : (orderFilter === "riwayat" ? "Belum ada order selesai-diambil." : "Belum ada order aktif.<br>Mulai dari <b>Kalkulator</b> → kirim penawaran → klien ACC → <b>jadikan order</b>.")}</div>`;
     return;
   }
   list.innerHTML = rows.map(o => {
@@ -2012,6 +2016,7 @@ function renderOrders() {
     </div>`;
   }).join("");
 }
+window.renderOrders = renderOrders;
 
 // ---- detail order ----
 let curOrderId = null;
@@ -3041,6 +3046,105 @@ window.posShareNotaPdf = async function () {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   showToast("✔️ Nota PDF diunduh");
+};
+
+// ---- laporan keuangan PDF (v34) — pakai ulang primitif PDF nota, tanpa gambar ----
+function reportPdfBlob(year, month) {
+  const a = periodAgg(year, month);
+  const label = month < 0 ? "Tahun " + year : MONTH_LBL[month] + " " + year;
+  const biz = POS.meta.biz || {};
+  let piutang = 0, piutangCnt = 0;
+  POS.orders.forEach(o => { const s = (o.price || 0) - paidSum(o); if (s > 0) { piutang += s; piutangCnt++; } });
+
+  const PW = 420, PH = 595, ML = 40, MR = PW - 40;
+  const ops = [];
+  const GREY = "0.42 0.46 0.52", BRAND = "0.12 0.3 0.72", DARK = "0.13 0.15 0.2", GREEN = "0.08 0.5 0.24", RED = "0.75 0.15 0.13";
+  const line = (x1, y1, x2, y2, col, lw) => ops.push(`${lw || 0.7} w ${col || "0.85 0.87 0.9"} RG ${x1} ${y1} m ${x2} ${y2} l S`);
+  const txt = (x, y, t, opt) => {
+    opt = opt || {};
+    const f = opt.bold ? "F2" : "F1", sz = opt.size || 9, col = opt.col || DARK;
+    t = pdfSan(t);
+    ops.push(`BT /${f} ${sz} Tf ${col} rg ${(opt.right ? x - pdfW(t, sz) : x).toFixed(1)} ${y.toFixed(1)} Td (${t}) Tj ET`);
+  };
+  const rowKV = (y, l, v, opt) => { opt = opt || {}; txt(ML, y, l, { size: 9.5, col: GREY }); txt(MR, y, v, { size: 9.5, right: true, bold: opt.bold, col: opt.valCol }); };
+
+  txt(ML, PH - 46, biz.name || "Laporan Keuangan", { bold: true, size: 13 });
+  txt(MR, PH - 42, "LAPORAN KEUANGAN", { bold: true, size: 9, col: BRAND, right: true });
+  txt(MR, PH - 55, label, { bold: true, size: 12, right: true });
+  line(ML, PH - 72, MR, PH - 72, BRAND, 2);
+
+  let y = PH - 96;
+  txt(ML, y, "RINGKASAN", { bold: true, size: 7.5, col: GREY }); y -= 18;
+  rowKV(y, "Order masuk", a.cnt + " order"); y -= 16;
+  rowKV(y, "Nilai order (omzet)", rp(a.omzet), { bold: true }); y -= 16;
+  rowKV(y, "Kas masuk (pembayaran)", rp(a.kas)); y -= 16;
+  rowKV(y, "HPP order", rp(a.hpp)); y -= 16;
+  rowKV(y, "Pengeluaran operasional", rp(a.expOper)); y -= 16;
+  if (a.expBahan > 0) { rowKV(y, "Belanja bahan (sudah dalam HPP)", rp(a.expBahan)); y -= 16; }
+  y -= 4; line(ML, y, MR, y, "0.6 0.65 0.72", 1); y -= 18;
+  txt(ML, y, "PROFIT BERSIH", { bold: true, size: 11 });
+  txt(MR, y, rpS(a.profit), { bold: true, size: 13, right: true, col: a.profit >= 0 ? GREEN : RED }); y -= 20;
+  txt(ML, y, "Profit bersih = nilai order - HPP - pengeluaran operasional.", { size: 7.5, col: GREY }); y -= 22;
+
+  line(ML, y, MR, y); y -= 18;
+  txt(ML, y, "PIUTANG BERJALAN", { bold: true, size: 7.5, col: GREY }); y -= 16;
+  rowKV(y, piutangCnt + " order belum lunas", rp(piutang), { bold: true, valCol: piutang > 0 ? RED : GREEN }); y -= 16;
+  txt(ML, y, "Dihitung dari semua order, tidak mengikuti periode.", { size: 7.5, col: GREY });
+
+  if (month < 0) {
+    y -= 24; line(ML, y, MR, y); y -= 18;
+    txt(ML, y, "PROFIT PER BULAN", { bold: true, size: 7.5, col: GREY }); y -= 15;
+    MONTH_LBL.forEach((n, i) => {
+      const m = periodAgg(year, i);
+      if (!m.cnt && !m.kas && !m.expOper && !m.expBahan) return;
+      rowKV(y, n + "  (omzet " + rp(m.omzet) + ")", rpS(m.profit), { valCol: m.profit >= 0 ? GREEN : RED }); y -= 14;
+    });
+  }
+
+  line(ML, 44, MR, 44);
+  txt(ML, 32, "Dicetak " + new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }), { size: 7, col: GREY });
+  txt(MR, 32, "PrintCalc Pro", { size: 7, col: GREY, right: true });
+
+  const enc = new TextEncoder();
+  const content = enc.encode(ops.join("\n"));
+  const objs = [
+    ["<< /Type /Catalog /Pages 2 0 R >>"],
+    ["<< /Type /Pages /Kids [3 0 R] /Count 1 >>"],
+    [`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>`],
+    [`<< /Length ${content.length} >>\nstream\n`, content, "\nendstream"],
+    ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"],
+    ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"]
+  ];
+  const chunks = []; let pos = 0;
+  const push = p => { const b = typeof p === "string" ? enc.encode(p) : p; chunks.push(b); pos += b.length; };
+  push("%PDF-1.4\n");
+  const offs = [];
+  objs.forEach((parts, i) => { offs.push(pos); push(`${i + 1} 0 obj\n`); parts.forEach(push); push("\nendobj\n"); });
+  const xref = pos;
+  push(`xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` +
+    offs.map(n => String(n).padStart(10, "0") + " 00000 n \n").join("") +
+    `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(chunks, { type: "application/pdf" });
+}
+window.exportReportPdf = async function () {
+  const year = parseInt(byId("rptYear").value);
+  const mv = byId("rptMonth").value;
+  const month = mv === "all" ? -1 : parseInt(mv);
+  const blob = reportPdfBlob(year, month);
+  const tag = month < 0 ? String(year) : MONTH_LBL[month].toLowerCase() + "-" + year;
+  const name = "laporan-" + tag + ".pdf";
+  try {
+    const file = new File([blob], name, { type: "application/pdf" });
+    if (IS_MOBILE && navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file] });
+      showToast("✔️ Laporan PDF dibagikan"); return;
+    }
+  } catch (e) { /* dibatalkan / tak didukung -> unduh */ }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  showToast("✔️ Laporan PDF diunduh");
 };
 
 // ---- backup / export / import ----

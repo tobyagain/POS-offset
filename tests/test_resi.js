@@ -109,7 +109,8 @@ function boot({ width = 390, idb } = {}) {
   await w.posPrintResiKirim();
   ok(w.__printed === printedBefore + 1, "resi kirim tercetak langsung (alamat klien lengkap)");
   ok(resi.textContent.includes("PENERIMA") && resi.textContent.includes("Toko Resi") && resi.textContent.includes("Jl. Mawar No. 1"), "resi kirim memuat penerima + alamat klien");
-  ok(resi.textContent.includes("PENGIRIM") && resi.textContent.includes("Dahlia Pack") && resi.textContent.includes("Jl. Melati 2"), "resi kirim memuat pengirim dari identitas usaha");
+  ok(resi.textContent.includes("PENGIRIM") && resi.textContent.includes("Dahlia Pack") && resi.textContent.includes("0812000111"), "resi kirim memuat pengirim (nama + telepon) dari identitas usaha");
+  ok(!resi.textContent.includes("Jl. Melati 2"), "resi kirim TIDAK memuat alamat pengirim");
   ok(!resi.textContent.includes("TOTAL") && !resi.textContent.includes(rpID(price)), "resi kirim tanpa info harga/pembayaran");
   ok(resi.textContent.includes(orderNo), "resi kirim mencantumkan nomor order sebagai referensi");
   w.dispatchEvent(new w.Event("afterprint"));

@@ -60,6 +60,31 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   dan form identitas usaha yang sudah ada, tidak ada form baru.
 - Resi kirim tanpa alamat klien: minta konfirmasi dulu (alamat bisa ditulis
   tangan), bukan ditolak.
+- Resi kirim — PENGIRIM cukup nama/perusahaan + telepon, TANPA alamat
+  (alamat pengirim tak diperlukan kurir; keputusan v31). Penerima tetap
+  lengkap dengan alamat.
+
+## Kertas dari klien & order partner (v31)
+- **Kertas dari klien** (jasa cetak saja): centang di form kalkulator;
+  harga kertas keluar dari HPP, ongkos cetak & potong TETAP ditagih
+  (konfirmasi Toby). Layout tetap dihitung agar tahu kebutuhan plano yang
+  harus disiapkan klien. Stok tidak berkurang. Satu-satunya edit blok inti
+  yang disetujui: `priceP = 0` saat centang aktif.
+- **Order partner** (makloon, saat antrian penuh): partner memberi harga
+  jadi, kita markup untuk profit. Tanpa kalkulator — form sendiri
+  (deskripsi bebas, modal partner, markup % otomatis menghitung harga jual,
+  harga jual tetap bisa diedit manual).
+- Modal partner = HPP snapshot order → laporan profit otomatis benar.
+  Pembayaran ke partner JANGAN dicatat lagi sebagai pengeluaran biasa
+  (dobel hitung) — kalau mau tercatat di arus kas, pakai tanda
+  "sudah terhitung HPP".
+- Modal partner TIDAK PERNAH tampil di nota/resi klien; hanya di detail
+  order (baris "Modal partner" + profit) dan laporan.
+- Order partner ikut nomor ORD normal, status, pembayaran, nota, resi,
+  repeat (prefill form partner + banner harga lama), badge "Partner".
+- Order partner TETAP bisa kirim penawaran ke klien seperti order biasa
+  (klien berhak tahu detail ordernya) — isi: deskripsi + harga jual, TANPA
+  modal partner dan TANPA identitas usaha (konsisten keputusan v25).
 
 ## Nota & identitas
 - Kirim HPP ke front office DIHAPUS (front office pakai POS).

@@ -1,0 +1,106 @@
+const { JSDOM } = require("jsdom");
+const FDBFactory = require("fake-indexeddb/lib/FDBFactory");
+const FDBKeyRange = require("fake-indexeddb/lib/FDBKeyRange");
+const fs = require("fs");
+const html = fs.readFileSync(require("path").join(__dirname, "..", "index.html"), "utf8");
+
+let pass = 0, fail = 0;
+function ok(cond, msg) {
+  if (cond) { pass++; console.log("  ✓ " + msg); }
+  else { fail++; console.error("  ✗ FAIL: " + msg); }
+}
+const tick = (ms = 30) => new Promise(r => setTimeout(r, ms));
+const rpID = n => "Rp " + Math.round(n).toLocaleString("id-ID");
+
+function boot({ width = 390, idb } = {}) {
+  const dom = new JSDOM(html, {
+    runScripts: "dangerously",
+    url: "https://printcalc.local/",
+    pretendToBeVisual: true,
+    beforeParse(w) {
+      w.indexedDB = idb || new FDBFactory();
+      w.IDBKeyRange = FDBKeyRange;
+      Object.defineProperty(w, "innerWidth", { value: width, configurable: true });
+      w.matchMedia = q => ({
+        matches: width >= 980 && /min-width:\s*980px/.test(q),
+        addEventListener() {}, addListener() {}
+      });
+      const noop = () => {};
+      w.HTMLCanvasElement.prototype.getContext = function () {
+        return new Proxy({ canvas: this, measureText: () => ({ width: 10 }) }, {
+          get(t, k) { return k in t ? t[k] : noop; },
+          set() { return true; }
+        });
+      };
+      w.URL.createObjectURL = blob => { w.__lastBlob = blob; return "blob:test"; };
+      w.URL.revokeObjectURL = noop;
+      w.HTMLAnchorElement.prototype.click = function () { w.__downloaded = this.download; };
+      w.scrollTo = noop;
+      w.HTMLElement.prototype.scrollIntoView = noop;
+      w.print = () => { w.__printed = (w.__printed || 0) + 1; };
+    }
+  });
+  return dom.window;
+}
+
+(async () => {
+  const sharedIdb = new FDBFactory();
+
+  console.log("\n== RESI THERMAL ==");
+  let w = boot({ width: 390, idb: sharedIdb });
+  await tick(80);
+  const d = w.document;
+
+  // Buat order dengan DP
+  w.navGo("form");
+  d.getElementById("qty").value = "1000";
+  w.calculate(); await tick();
+  w.openNewOrder();
+  d.getElementById("noName").value = "Toko Resi";
+  d.getElementById("noDP").value = "100000";
+  const price = parseInt(d.getElementById("noPrice").value);
+  await w.saveNewOrder(); await tick();
+  const orderNo = d.getElementById("odTitle").innerText;
+
+  // Kontrol resi di detail order
+  ok(!!d.getElementById("odResiW") && d.getElementById("odResiW").value === "58", "pilihan lebar kertas tampil, default 58 mm");
+
+  // Cetak resi 58 mm
+  w.posPrintResi();
+  ok(w.__printed === 1, "posPrintResi memanggil window.print");
+  ok(d.body.classList.contains("print-resi"), "mode print-resi aktif saat cetak");
+  const resi = d.getElementById("resiPrint");
+  ok(resi.textContent.includes(orderNo) && resi.textContent.includes("Toko Resi"), "resi memuat nomor order + nama klien");
+  ok(resi.textContent.includes("TOTAL") && resi.textContent.includes(rpID(price)), "resi memuat harga total");
+  ok(resi.textContent.includes("SISA") && resi.textContent.includes(rpID(price - 100000)), "resi memuat sisa tagihan setelah DP");
+  ok(!resi.innerHTML.includes("r-lunas"), "belum lunas: blok LUNAS tidak tampil");
+  ok(d.getElementById("resiPageStyle").textContent.includes("size: 58mm"), "@page memakai lebar 58 mm");
+  ok(!resi.className.includes("w80"), "lebar konten 58 mm (tanpa kelas w80)");
+  w.dispatchEvent(new w.Event("afterprint"));
+  ok(!d.body.classList.contains("print-resi"), "afterprint mengembalikan tampilan normal");
+
+  // Ganti ke 80 mm -> tersimpan + dipakai saat cetak
+  await w.thermalSetWidth("80"); await tick();
+  w.posPrintResi();
+  ok(d.getElementById("resiPageStyle").textContent.includes("size: 80mm") && resi.className.includes("w80"), "ganti 80 mm: @page dan lebar konten ikut");
+  w.dispatchEvent(new w.Event("afterprint"));
+
+  // Lunas -> blok LUNAS tampil di resi
+  d.getElementById("odPayAmt").value = String(price - 100000);
+  const payP = w.posAddPayment(); await tick(); await payP; await tick();
+  w.posPrintResi();
+  ok(resi.innerHTML.includes("r-lunas") && resi.textContent.includes("LUNAS"), "order lunas: blok LUNAS tampil di resi");
+  w.dispatchEvent(new w.Event("afterprint"));
+
+  // Persistensi lebar kertas
+  console.log("\n== PERSISTENSI RESI ==");
+  let w2 = boot({ width: 390, idb: sharedIdb });
+  await tick(80);
+  w2.navGo("orders");
+  w2.document.querySelector("#orderList .ocard").click();
+  await tick();
+  ok(w2.document.getElementById("odResiW").value === "80", "pilihan lebar 80 mm bertahan setelah reload");
+
+  console.log(`\n=== ${pass} passed, ${fail} failed ===`);
+  process.exit(fail ? 1 : 0);
+})().catch(e => { console.error("CRASH:", e); process.exit(1); });

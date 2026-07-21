@@ -40,8 +40,15 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   tapi diberi tanda "sudah terhitung HPP" supaya TIDAK dobel mengurangi profit
   (biaya kertas sudah ada di HPP order). Tampil terpisah di laporan.
 - Piutang dihitung dari semua order belum lunas, tidak mengikuti periode.
-- Resi thermal 58/80 mm DITUNDA sampai merek/koneksi printer dikonfirmasi;
-  jalur awal yang disepakati: tampilan cetak HTML + window.print (bukan ESC/POS).
+
+## Resi thermal (v29)
+- Printer: Blueprint, koneksi USB (via driver, printer terpasang di komputer).
+- Jalur cetak: tampilan HTML + window.print lewat dialog print browser —
+  BUKAN ESC/POS langsung. ESC/POS via Web Bluetooth/USB boleh ditambah nanti
+  kalau alur dialog terasa lambat di lapangan, tanpa membongkar yang ada.
+- Lebar kertas 58/80 mm dipilih di detail order, tersimpan di meta (`thermal`).
+- Resi memuat identitas usaha (konsisten aturan "identitas hanya di nota"),
+  ringkasan pekerjaan, pembayaran, sisa tagihan, dan blok LUNAS bila lunas.
 
 ## Nota & identitas
 - Kirim HPP ke front office DIHAPUS (front office pakai POS).

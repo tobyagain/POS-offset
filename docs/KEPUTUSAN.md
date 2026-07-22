@@ -177,6 +177,33 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   fisik. Alternatif lebih ringan bila cuma butuh saldo laci: "saldo kas
   berjalan" tanpa ritual. Jangan bangun buka/tutup tanpa keputusan Toby.
 
+## PWA — installable ke home screen (v38)
+- Keputusan Toby: **installable saja, data tetap per-HP** (bukan sinkron).
+  Multi-device sync ditolak untuk sekarang (itu butuh backend — roadmap #3).
+- Model kirim berubah: dari "kirim `index.html` via WA/Drive (dibuka `file://`)"
+  → **di-host di satu URL HTTPS (GitHub Pages)**. SEBAB TEKNIS: service worker &
+  prompt install TIDAK jalan dari `file://`, hanya di HTTPS/localhost.
+- **Data TIDAK ke server/repo.** GitHub Pages hanya menyajikan "kulit" app.
+  Order/klien/stok/keuangan tetap di IndexedDB/localStorage per HP — sama seperti
+  sebelumnya. Pages publik, tapi pengunjung asing cuma dapat app kosong.
+- File yang ditambah (aditif, tak menyentuh logika app): `manifest.webmanifest`,
+  `sw.js`, `icons/` (192/512 + apple-touch 180, dibuat dari SVG offset: kertas +
+  colorbar CMYK, full-bleed brand #0061ab), `.nojekyll`, + meta/link di `<head>`
+  & 1 skrip registrasi SW (hanya jalan bila `location.protocol==="https:"` —
+  jadi `file://` melewatinya diam-diam; tes headless jsdom juga aman).
+- **SW strategy**: dokumen = network-first (rilis baru langsung terambil saat
+  online) → fallback cache saat offline; aset ikon/manifest = cache-first.
+  Lintas-origin (Google Fonts) dibiarkan; offline → font fallback sistem.
+- **Disiplin rilis**: tiap rilis, NAIKKAN `CACHE` di `sw.js` (`printcalc-v1` →
+  `v2` …) supaya HP mengambil `index.html` baru (kalau tidak, cache lama lengket).
+- **Revert aman**: (a) kode aditif → hapus file/branch; (b) SW lengket di HP →
+  cara mundur benar = deploy `sw.js` "kill-switch" (unregister + hapus cache),
+  bukan sekadar hapus file; (c) data ikut origin, tak hilang — file `file://`
+  lama tak tersentuh; pindah balik = export/import backup sekali.
+- **Hosting belum diaktifkan otomatis**: Toby aktifkan GitHub Pages (Settings →
+  Pages → source `main` / root) setelah merge, lalu uji install di HP.
+- Buka/tutup kas shift TETAP ditunda (lihat v37). PWA tidak mengubah itu.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

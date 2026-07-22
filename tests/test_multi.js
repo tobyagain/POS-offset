@@ -101,7 +101,7 @@ function calcItem(w, { paper = 0, pW, pH, qty }) {
   w.navGo("orders");
   d.querySelector("#orderList .ocard").click(); await tick();
   w.posPrintResi();
-  ok(d.getElementById("resiPrint").textContent.includes("1. Cetak") && d.getElementById("resiPrint").textContent.includes("2. Cetak"), "resi order memuat kedua item");
+  ok(d.getElementById("resiPrint").textContent.includes("1. ") && d.getElementById("resiPrint").textContent.includes("2. ") && d.getElementById("resiPrint").textContent.includes("Subtotal"), "resi order memuat kedua item + subtotal per item");
   ok(!d.getElementById("resiPrint").textContent.includes("undefined"), "resi multi-item tanpa data rusak");
   w.dispatchEvent(new w.Event("afterprint"));
 

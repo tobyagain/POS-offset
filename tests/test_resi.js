@@ -64,8 +64,9 @@ function boot({ width = 390, idb } = {}) {
   await w.saveNewOrder(); await tick();
   const orderNo = d.getElementById("odTitle").innerText;
 
-  // Kontrol resi di detail order
-  ok(!!d.getElementById("odResiW") && d.getElementById("odResiW").value === "58", "pilihan lebar kertas tampil, default 58 mm");
+  // Pilihan lebar kertas resi kini di Pengaturan (bukan per-cetak), default 58 mm
+  ok(!d.getElementById("odResiW"), "pilihan kertas per-cetak dihapus dari detail order");
+  ok(!!d.getElementById("setResiW") && d.getElementById("setResiW").value === "58", "pilihan lebar kertas ada di Pengaturan, default 58 mm");
 
   // Cetak resi 58 mm
   w.posPrintResi();
@@ -142,7 +143,7 @@ function boot({ width = 390, idb } = {}) {
   for (let i = 0; i < 30 && !w2.document.querySelector("#orderList .ocard"); i++) { await tick(50); w2.navGo("orders"); } // tunggu IDB termuat
   w2.document.querySelector("#orderList .ocard").click();
   await tick();
-  ok(w2.document.getElementById("odResiW").value === "80", "pilihan lebar 80 mm bertahan setelah reload");
+  ok(w2.document.getElementById("setResiW").value === "80", "pilihan lebar 80 mm bertahan setelah reload (di Pengaturan)");
 
   console.log(`\n=== ${pass} passed, ${fail} failed ===`);
   process.exit(fail ? 1 : 0);

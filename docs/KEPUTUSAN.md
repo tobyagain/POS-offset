@@ -233,6 +233,34 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   (omzet naik → laporan tetap konsisten). Unit `OFFER_ROUND` gampang diubah bila
   Toby mau kelipatan lain (500/5.000). Berlaku juga utk perbandingan oplah & alts.
 
+## Temuan uji pakai v40 (ongkir, stok, resi)
+- **Stok opname TIDAK memengaruhi omzet/HPP/laporan.** Dikonfirmasi dari kode:
+  `stockApply()` hanya menulis `POS.stock` (qty + log). Laporan (`periodAgg`)
+  dihitung dari order (`o.price`/`ordProduk`, `orderHpp`) + pengeluaran — tak
+  pernah membaca stok. Aman.
+- **Lebar kertas resi (58/80) pindah ke Pengaturan.** Dropdown per-cetak di
+  detail order dihapus (`#odResiW`); jadi satu setting di Pengaturan (`#setResiW`
+  → `meta.thermal`). Alasan Toby: printer thermal-nya tetap, dan dialog print
+  browser toh sudah minta pilih printer — dropdown per-cetak mubazir.
+- **Ongkir ditagihkan ke klien, di luar omzet/profit.**
+  - Model: `o.price` = **total tagihan (produk + ongkir)** → semua jalur
+    pembayaran/piutang/lunas/nota/resi/kartu pakai `o.price` apa adanya (tak ada
+    threading rumit). `o.ongkir` disimpan terpisah (opsional). Helper
+    `ordProduk(o) = o.price − ongkir`.
+  - **Omzet & profit pakai `ordProduk`** (produk saja) — ongkir bukan penjualan,
+    bukan profit; ia titipan yang diteruskan. Kas masuk (pembayaran) tetap uang
+    riil termasuk bagian ongkir; piutang = total tagihan − dibayar (incl ongkir).
+    Kalau Toby bayar kurir sendiri, catat lewat Pengeluaran (opsional).
+  - Form order (biasa & partner): "Harga produk"/"Harga jual" + "Ongkir" →
+    "Total tagihan". Rincian Produk/Ongkir/Total muncul di detail, nota WA, nota
+    PDF, dan resi HANYA bila `o.ongkir > 0` (order lama tanpa ongkir tak berubah).
+  - Order partner: `calc.totalOffer` tetap = jual (tanpa ongkir); profit partner
+    pakai `ordProduk` supaya ongkir tak terhitung sebagai untung makloon.
+- **Format resi multi-item dirapikan.** Dulu satu baris padat
+  "bahan · qty · harga" → berantakan di kertas sempit. Sekarang per item: header
+  tebal "N. UkuranxUkuran cm, K warna", baris bahan+qty, lalu `Subtotal` rata
+  kanan (pakai `.r-row`). Konsisten dgn baris TOTAL/SISA.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

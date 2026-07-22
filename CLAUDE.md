@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (196 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (217 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi.
@@ -72,6 +72,14 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
 - **Kalkulator bersih setelah simpan order (v39)**: `resetCalcView()` menol-kan
   `lastCalc`/`lastAlts` & sembunyikan `#results` supaya order berikutnya tidak
   diawali sisa hitungan lama (harus hitung ulang).
+- **Ongkir (v40)**: `o.price` = **total tagihan ke klien = produk + ongkir**;
+  SEMUA jalur pembayaran/piutang/lunas/nota/resi pakai `o.price` apa adanya.
+  `o.ongkir` disimpan terpisah (opsional; order lama tanpa field → 0). Helper
+  `ordProduk(o) = o.price − ongkir` = nilai produk saja; dipakai untuk **omzet &
+  profit** (ongkir BUKAN omzet, BUKAN profit — titipan yang diteruskan ke klien).
+  Kas masuk (pembayaran) tetap uang riil (termasuk bagian ongkir). Form: "Harga
+  produk" + "Ongkir" → "Total tagihan". Order partner: `calc.totalOffer` = jual
+  (tanpa ongkir); profit partner pakai `ordProduk`.
 - **Repeat order** = hitung ulang dengan tarif sekarang + tampilkan harga lama
   sebagai pembanding (keputusan produk, bukan bug).
 - **Stok** terikat NAMA kertas; boleh minus (= order jalan, kertas belum dibeli);
@@ -96,7 +104,8 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
 - **Resi thermal** lewat dialog print browser (driver printer Blueprint USB),
   BUKAN ESC/POS. Konten dirakit ke `#resiPrint`, `@page` disuntik dinamis
   memakai AREA CETAK efektif (kertas 58 → 48 mm, kertas 80 → 72 mm; pilihan
-  58/80 tersimpan di meta), font sans tebal (head thermal 1-bit — font tipis
+  58/80 diset SEKALI di Pengaturan → `meta.thermal`, BUKAN per-cetak — dialog
+  print sudah memilih printer; v40), font sans tebal (head thermal 1-bit — font tipis
   tercetak abu/putus), `body.print-resi` menyembunyikan sisa halaman saat print.
   Dua jenis: **resi order** (pembayaran, utk order offline/di tempat) dan
   **resi kirim** (penerima=klien lengkap + pengirim=nama & telp usaha saja
@@ -150,5 +159,8 @@ hari ini, dipatok tanggal hari ini; buka/tutup kas shift SENGAJA ditunda) →
 v38 PWA installable (manifest + service worker + ikon; di-host GitHub Pages;
 data tetap per-HP, TANPA sinkron/server) → v39 poles: alamat panjang membungkus
 rapi (baris tumpuk), kalkulator bersih setelah simpan order, watermark nota PDF
-7%, pembulatan total penawaran ke atas (kelipatan Rp 1.000) + baris rinciannya.
+7%, pembulatan total penawaran ke atas (kelipatan Rp 1.000) + baris rinciannya
++ alamat/teks panjang membungkus rapi (HTML detail, nota PDF via `pdfWrap`,
+resi) → v40 ongkir (ditagihkan ke klien, di luar omzet/profit) + lebar kertas
+resi pindah ke Pengaturan + format resi multi-item dirapikan (subtotal per item).
 Detail keputusan: `docs/KEPUTUSAN.md`.

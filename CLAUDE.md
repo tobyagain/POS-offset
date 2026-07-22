@@ -8,11 +8,19 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (186 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (196 asertsi)
 ```
 
-Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
-(dikirim ke tim via WA/Drive). Rilis = git tag (`v27`, `v28`, ...), bukan rename file.
+Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi.
+Rilis = git tag (`v27`, `v28`, ...), bukan rename file.
+
+**Distribusi (v38): PWA di-host di satu URL HTTPS (GitHub Pages), installable ke
+home screen.** Data TETAP per-HP (IndexedDB/localStorage) — hosting hanya
+menyajikan "kulit" app, TIDAK ada sinkronisasi/server data. File PWA aditif:
+`manifest.webmanifest`, `sw.js`, `icons/`, `.nojekyll`. **Tiap rilis: NAIKKAN
+`CACHE` di `sw.js`** (`printcalc-v1` → `v2` …) agar HP mengambil `index.html`
+baru. SW hanya aktif di HTTPS; buka `file://` melewatinya. (Model lama "kirim
+file via WA" masih jalan sebagai `file://`, tanpa PWA.)
 
 ## Arsitektur — tiga blok `<script>` berurutan di index.html
 
@@ -131,5 +139,7 @@ multi-item (beberapa ukuran/kertas dalam satu order via keranjang draft) →
 v36 rincian per pcs order partner (HPP/pcs, harga jual/pcs, untung/pcs +
 markup% — tampilan turunan, muncul bila Jumlah/pcs diisi) → v37 kartu "Kas
 hari ini" di laporan keuangan (arus kas harian: masuk/keluar/selisih + order
-hari ini, dipatok tanggal hari ini; buka/tutup kas shift SENGAJA ditunda).
+hari ini, dipatok tanggal hari ini; buka/tutup kas shift SENGAJA ditunda) →
+v38 PWA installable (manifest + service worker + ikon; di-host GitHub Pages;
+data tetap per-HP, TANPA sinkron/server).
 Detail keputusan: `docs/KEPUTUSAN.md`.

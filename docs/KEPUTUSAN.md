@@ -204,6 +204,25 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   Pages → source `main` / root) setelah merge, lalu uji install di HP.
 - Buka/tutup kas shift TETAP ditunda (lihat v37). PWA tidak mengubah itu.
 
+## Poles UI/harga (v39) — dari uji pakai lapangan
+- **Alamat panjang membungkus rapi.** Alamat klien (mis. dari copy-paste
+  Tokopedia) sebelumnya satu baris `.val` `white-space:nowrap` → terpotong/luber.
+  Ditambah utilitas `.row.stack` (tumpuk label di atas, nilai penuh membungkus,
+  tanpa titik-titik) dan dipakai di baris Alamat detail order.
+- **Kalkulator bersih setelah simpan order.** Dulu hasil kalkulasi lama tetap
+  tampil saat mulai order berikutnya (membingungkan + risiko dobel "jadikan
+  order"). `resetCalcView()` menol-kan `lastCalc`/`lastAlts` & sembunyikan
+  `#results` setelah `saveNewOrder`. Form (mesin/kertas/ukuran) TIDAK dihapus —
+  cuma hasilnya, jadi order baru wajib hitung ulang.
+- **Watermark logo nota PDF 5% → 7%.** ExtGState `ca/CA 0.05 → 0.07` (permintaan
+  Toby: tile logo terlalu pudar). Tetap disiplin tile miring -15°.
+- **Total penawaran dibulatkan KE ATAS ke kelipatan Rp 1.000.** Di `quoteFor`:
+  `totalOffer = ceil(rawOffer/1000)*1000`, `roundAdj = totalOffer - rawOffer`.
+  Baris "Pembulatan ke atas (+Rp X)" muncul di Penawaran hanya bila `roundAdj>0`
+  (permintaan Toby: tetap ada rinciannya). Pembulatan mengalir ke profit
+  (omzet naik → laporan tetap konsisten). Unit `OFFER_ROUND` gampang diubah bila
+  Toby mau kelipatan lain (500/5.000). Berlaku juga utk perbandingan oplah & alts.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

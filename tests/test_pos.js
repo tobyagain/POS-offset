@@ -77,6 +77,10 @@ async function confirmDialog(w, accept = true) {
   const offerNow = num(d.getElementById("sTotal").innerText);
   ok(offerNow > 0, "kalkulasi jalan, total penawaran terisi (offer=" + offerNow + ")");
   ok(vis(w, "scrHasil"), "layar hasil tampil setelah kalkulasi");
+  // Pembulatan total penawaran KE ATAS ke kelipatan 1.000
+  ok(offerNow % 1000 === 0, "total penawaran dibulatkan ke atas (kelipatan 1.000): " + offerNow);
+  const rowRound = d.getElementById("rowRound");
+  ok(rowRound.hidden || d.getElementById("fRound").innerText.includes("+"), "baris pembulatan muncul dgn tanda + saat ada pembulatan");
 
   // ACC -> order baru; harga terprefill dari penawaran
   w.openNewOrder();
@@ -91,6 +95,7 @@ async function confirmDialog(w, accept = true) {
   const priceNow = parseInt(d.getElementById("noPrice").value);
   d.getElementById("noName").value = "Toko ABC";
   d.getElementById("noPhone").value = "0812345678";
+  d.getElementById("noAddr").value = "Jl. Prapanca IV, Kec. Kby. Baru, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta [Tokopedia Note: Jalan Prapanca IV No. 66] Kebayoran Baru";
   d.getElementById("noDeadline").value = "2026-07-25";
   d.getElementById("noDesign").value = "nota-abc-v2.pdf, plat rak B";
   d.getElementById("noDP").value = "100000";
@@ -101,6 +106,10 @@ async function confirmDialog(w, accept = true) {
   ok(/^ORD-2607-001$/.test(no1), "nomor order otomatis ORD-2607-001 (dapat: " + no1 + ")");
   ok(d.getElementById("odBody").textContent.includes("Toko ABC"), "detail memuat nama klien");
   ok(d.getElementById("odBody").textContent.includes("nota-abc-v2.pdf"), "catatan desain tersimpan");
+  // Alamat panjang: baris ditumpuk (class row stack) agar membungkus rapi, tak terpotong
+  ok(d.getElementById("odBody").innerHTML.includes('class="row stack"') && d.getElementById("odBody").textContent.includes("Prapanca IV"), "alamat panjang dirender sebagai baris tumpuk yang membungkus");
+  // Kalkulator bersih setelah order tersimpan (bukan sisa hitungan lama)
+  ok(d.getElementById("results").style.display === "none", "hasil kalkulasi dibersihkan setelah order tersimpan");
   ok(d.getElementById("odBody").innerHTML.includes("pay-dp"), "DP 100rb tercatat sebagai status DP");
 
   // Intent: snapshot — harga order TIDAK berubah saat settings berubah (lewat UI settings asli)

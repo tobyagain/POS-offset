@@ -224,6 +224,10 @@ input::placeholder { color: var(--text-3); font-weight: 400; }
 }
 .row .lbl { color: var(--text-2); }
 .row .val { font-weight: 700; white-space: nowrap; color: var(--text); }
+/* baris nilai panjang (mis. alamat) — tumpuk & bungkus rapi, tanpa titik-titik */
+.row.stack { flex-direction: column; align-items: stretch; gap: 3px; }
+.row.stack .dots { display: none; }
+.row.stack .val { white-space: normal; text-align: left; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
 
 canvas {
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
@@ -693,6 +697,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
           <div class="row"><span class="lbl">Profit dasar</span><span class="dots"></span><span id="fProfBase" class="val"></span></div>
           <div class="row"><span class="lbl">Markup oplah (<span id="txtMarkup"></span>%)</span><span class="dots"></span><span id="fProfMark" class="val"></span></div>
           <div class="row"><span class="lbl"><b>Total keuntungan</b></span><span class="dots"></span><span id="fProfTotal" class="val profit-val" style="font-weight:800"></span></div>
+          <div class="row" id="rowRound" hidden><span class="lbl">Pembulatan ke atas</span><span class="dots"></span><span id="fRound" class="val"></span></div>
           <div class="hr"></div>
           <div class="total-row"><span class="lbl">Total penawaran</span><span class="price-tag" id="fTotal"></span></div>
           <div class="unit-row">Harga jual / pcs: <b id="fUnit"></b></div>
@@ -1145,6 +1150,7 @@ function resetSettings() {
 
 // ================= KALKULASI =================
 let planoW = 75, planoH = 100, priceP = 1300;
+const OFFER_ROUND = 1000;    // total penawaran dibulatkan KE ATAS ke kelipatan ini (rupiah)
 let machineEffW = 50, machineEffH = 70;
 let baseCost = 160000, overCost = 50000;
 let gripReminderOff = false; // reminder gripper: aktif lagi setelah toggle manual / auto-disable
@@ -1317,9 +1323,13 @@ function quoteFor(scenarios, qty, colorCount, bProf, mPct) {
   const hppPerUnit = hppTotal / qty;
   const profitMarkup = (qty > 1000) ? (qty - 1000) * hppPerUnit * (mPct / 100) : 0;
   const totalProfit = bProf + profitMarkup;
-  const totalOffer = hppTotal + totalProfit;
+  const rawOffer = hppTotal + totalProfit;
+  // Pembulatan total penawaran KE ATAS ke kelipatan OFFER_ROUND (rupiah).
+  // Selisihnya (roundAdj) ditampilkan sebagai baris "Pembulatan" & menambah profit.
+  const totalOffer = Math.ceil(rawOffer / OFFER_ROUND) * OFFER_ROUND;
+  const roundAdj = totalOffer - rawOffer;
   return { best, qty, totalQtyProd, drukNett, drukTotal, totalPlano, extraDruk,
-           costPaper, costDruk, hppTotal, hppPerUnit, profitMarkup, totalProfit, totalOffer };
+           costPaper, costDruk, hppTotal, hppPerUnit, profitMarkup, totalProfit, rawOffer, roundAdj, totalOffer };
 }
 
 function parseAlts(qty) {
@@ -1473,6 +1483,11 @@ function doCalculate(pW, pH, qty, scenarios, gOn) {
   document.getElementById("fTotal").innerText = "Rp " + Math.round(q.totalOffer).toLocaleString();
   document.getElementById("fUnit").innerText = "Rp " + Math.round(q.totalOffer / qty).toLocaleString();
   document.getElementById("fProfTotal").innerText = "Rp " + Math.round(q.totalProfit).toLocaleString();
+  const rowRound = document.getElementById("rowRound");
+  if (q.roundAdj > 0) {
+    rowRound.hidden = false;
+    document.getElementById("fRound").innerText = "+ Rp " + Math.round(q.roundAdj).toLocaleString();
+  } else rowRound.hidden = true;
 
   drawLayout(best);
 
@@ -2078,7 +2093,7 @@ window.posOpenOrder = function (id) {
       <p class="card-title">Klien</p>
       <div class="row"><span class="lbl">Nama</span><span class="dots"></span><strong class="val">${esc(c ? c.name : "(terhapus)")}</strong></div>
       ${c && c.phone ? `<div class="row"><span class="lbl">Telepon</span><span class="dots"></span><strong class="val">${esc(c.phone)}</strong></div>` : ""}
-      ${c && c.address ? `<div class="row"><span class="lbl">Alamat</span><span class="dots"></span><strong class="val">${esc(c.address)}</strong></div>` : ""}
+      ${c && c.address ? `<div class="row stack"><span class="lbl">Alamat</span><strong class="val">${esc(c.address)}</strong></div>` : ""}
       <div class="row"><span class="lbl">Dibuat</span><span class="dots"></span><strong class="val">${new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</strong></div>
       ${o.deadline ? `<div class="row"><span class="lbl">Deadline</span><span class="dots"></span><strong class="val"${isLate(o) ? ' style="color:var(--danger)"' : ""}>${fmtDate(o.deadline)}</strong></div>` : ""}
     </div>
@@ -2364,10 +2379,20 @@ window.saveNewOrder = async function () {
   }
   CART = []; updateCartIndicator();
   REPEAT = null; byId("repeatBanner").hidden = true;
+  resetCalcView();   // kalkulator kembali bersih untuk order berikutnya (bukan sisa hitungan lama)
   showToast("✔️ Order " + o.no + " tersimpan");
   maybeBackupNudge();
   posOpenOrder(o.id);
 };
+// Bersihkan tampilan hasil kalkulasi setelah order tersimpan, supaya order baru
+// tidak diawali sisa hitungan sebelumnya (perlu hitung ulang untuk penawaran baru).
+function resetCalcView() {
+  lastCalc = null; lastAlts = null;
+  const res = byId("results"); if (res) { res.style.display = "none"; res.classList.remove("show"); }
+  const ph = byId("resPlaceholder"); if (ph) ph.style.display = "";
+  const cc = byId("compareCard"); if (cc) cc.style.display = "none";
+  const pbc = byId("pbcNote"); if (pbc) pbc.hidden = true;
+}
 
 // ---- repeat order ----
 // Isi form kalkulator dari inputs 1 item; balikan false bila mesin/kertas hilang.
@@ -3159,7 +3184,7 @@ function notaPdfBlob(o) {
   };
   if (logo) objs.push(imgObj(logo));
   if (sign) objs.push(imgObj(sign));
-  if (logo) objs.push(["<< /Type /ExtGState /ca 0.05 /CA 0.05 >>"]);
+  if (logo) objs.push(["<< /Type /ExtGState /ca 0.07 /CA 0.07 >>"]);
   if (lunas) objs.push(["<< /Type /ExtGState /ca 0.72 /CA 0.72 >>"]);
   const chunks = [];
   let pos = 0;

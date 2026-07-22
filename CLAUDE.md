@@ -65,6 +65,13 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   item). Semua tampilan (kartu/detail/nota/resi/stok/laporan) loop lewat helper
   ini. Item dikumpulkan via keranjang draft (`CART`) di kalkulator. Order
   partner tetap 1 item.
+- **Pembulatan penawaran (v39)**: total penawaran kalkulator dibulatkan KE ATAS
+  ke kelipatan `OFFER_ROUND` (Rp 1.000) di `quoteFor`. Selisih (`roundAdj`) tampil
+  sebagai baris "Pembulatan ke atas" di Penawaran & ikut menambah profit. Semua
+  turunan (harga/pcs, order price, perbandingan oplah, share) memakai nilai bulat.
+- **Kalkulator bersih setelah simpan order (v39)**: `resetCalcView()` menol-kan
+  `lastCalc`/`lastAlts` & sembunyikan `#results` supaya order berikutnya tidak
+  diawali sisa hitungan lama (harus hitung ulang).
 - **Repeat order** = hitung ulang dengan tarif sekarang + tampilkan harga lama
   sebagai pembanding (keputusan produk, bukan bug).
 - **Stok** terikat NAMA kertas; boleh minus (= order jalan, kertas belum dibeli);
@@ -77,7 +84,7 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
 - **Nomor order** `ORD-YYMM-XXX` dari counter meta — jangan hitung dari daftar order.
 - **Nota PDF** dirakit manual level byte (tanpa library): teks ASCII-only lewat
   `pdfSan()`, offset xref = panjang byte, JPEG via DCTDecode, watermark logo
-  di-tile miring -15° dgn ExtGState ca 0.05, stempel LUNAS vektor (hanya jika
+  di-tile miring -15° dgn ExtGState ca 0.07, stempel LUNAS vektor (hanya jika
   paid ≥ price), blok tanda tangan "Hormat kami". Penomoran objek dinamis —
   ikuti pola yang ada saat menambah objek.
 - **Identitas usaha hanya di nota** (PDF + teks WA). Teks penawaran ke klien
@@ -141,5 +148,7 @@ markup% — tampilan turunan, muncul bila Jumlah/pcs diisi) → v37 kartu "Kas
 hari ini" di laporan keuangan (arus kas harian: masuk/keluar/selisih + order
 hari ini, dipatok tanggal hari ini; buka/tutup kas shift SENGAJA ditunda) →
 v38 PWA installable (manifest + service worker + ikon; di-host GitHub Pages;
-data tetap per-HP, TANPA sinkron/server).
+data tetap per-HP, TANPA sinkron/server) → v39 poles: alamat panjang membungkus
+rapi (baris tumpuk), kalkulator bersih setelah simpan order, watermark nota PDF
+7%, pembulatan total penawaran ke atas (kelipatan Rp 1.000) + baris rinciannya.
 Detail keputusan: `docs/KEPUTUSAN.md`.

@@ -127,5 +127,9 @@ markup utk profit) → v32 pengingat backup (banner "belum di-backup" tiap buka)
 + tombol hapus semua data → v33 poles UI (nav bisa di-scroll, umpan balik
 sentuh di kartu/chip, kontras badge, tombol hapus lebih jelas) → v34 cari
 order (nomor/klien/pekerjaan) + ekspor laporan keuangan PDF → v35 order
-multi-item (beberapa ukuran/kertas dalam satu order via keranjang draft).
+multi-item (beberapa ukuran/kertas dalam satu order via keranjang draft) →
+v36 rincian per pcs order partner (HPP/pcs, harga jual/pcs, untung/pcs +
+markup% — tampilan turunan, muncul bila Jumlah/pcs diisi) → v37 kartu "Kas
+hari ini" di laporan keuangan (arus kas harian: masuk/keluar/selisih + order
+hari ini, dipatok tanggal hari ini; buka/tutup kas shift SENGAJA ditunda).
 Detail keputusan: `docs/KEPUTUSAN.md`.

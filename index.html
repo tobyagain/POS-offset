@@ -889,7 +889,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       <p class="card-title t-yel">Pekerjaan &amp; harga</p>
       <div class="form-group"><label>Deskripsi pekerjaan</label><input type="text" id="poDesc" placeholder="cth: Nota NCR 2 ply 10&times;16, 100 buku"></div>
       <div class="grid">
-        <div class="form-group"><label>Jumlah (pcs) &mdash; opsional</label><input type="number" id="poQty"></div>
+        <div class="form-group"><label>Jumlah (pcs) &mdash; opsional</label><input type="number" id="poQty" oninput="poInfo()"></div>
         <div class="form-group"><label>Nama partner &mdash; opsional</label><input type="text" id="poPartner" placeholder="cth: Percetakan X"></div>
       </div>
       <div class="grid">
@@ -900,6 +900,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <div class="form-group"><label>Harga jual ke klien (Rp)</label><input type="number" id="poPrice" oninput="poInfo()"></div>
         <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="poDP" placeholder="0"></div>
       </div>
+      <div id="poBreak" hidden style="margin:0 0 8px"></div>
       <p class="set-hint" id="poProfit" style="margin:0 0 10px"></p>
       <button class="btn-ghost" onclick="poSharePenawaran()">Kirim penawaran<small>untuk klien &middot; tanpa modal partner</small></button>
       <button class="btn-primary" onclick="savePartnerOrder()">Simpan order</button>
@@ -2056,8 +2057,9 @@ window.posOpenOrder = function (id) {
     ? `<div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">${esc(o.calc.desc)}</strong></div>
        ${o.calc.qty ? `<div class="row"><span class="lbl">Jumlah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>` : ""}
        ${o.partner && o.partner.name ? `<div class="row"><span class="lbl">Dikerjakan oleh</span><span class="dots"></span><strong class="val">${esc(o.partner.name)}</strong></div>` : ""}
-       <div class="row"><span class="lbl">Modal partner</span><span class="dots"></span><strong class="val">${rp(o.calc.hppTotal)}</strong></div>
-       <div class="row"><span class="lbl">Profit</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp(o.price - o.calc.hppTotal)}</strong></div>`
+       <div class="row"><span class="lbl">Modal partner</span><span class="dots"></span><strong class="val">${rp(o.calc.hppTotal)}${o.calc.qty ? " · " + rp(o.calc.hppTotal / o.calc.qty) + "/pcs" : ""}</strong></div>
+       ${o.calc.qty ? `<div class="row"><span class="lbl">Harga jual / pcs</span><span class="dots"></span><strong class="val">${rp(o.price / o.calc.qty)}</strong></div>` : ""}
+       <div class="row"><span class="lbl">Profit</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp(o.price - o.calc.hppTotal)}${o.calc.qty ? " · " + rp((o.price - o.calc.hppTotal) / o.calc.qty) + "/pcs" : ""}</strong></div>`
     : multiItem
     ? its.map((it, i) => `<div class="row" style="border-bottom:0;padding-bottom:0;margin-top:${i ? 12 : 0}px"><span class="lbl" style="font-weight:800;color:var(--text)">Item ${i + 1}</span><span class="val"><b>${rp(it.price)}</b></span></div>${detailRows(it.calc)}`).join("") +
       `<div class="row" style="border-top:1px solid var(--border);margin-top:8px"><span class="lbl"><b>Subtotal ${its.length} item</b></span><span class="val"><b>${rp(itsTotal)}</b></span></div>`
@@ -2423,7 +2425,22 @@ window.poRecalc = function () {
 window.poInfo = function () {
   const cost = parseInt(byId("poCost").value) || 0;
   const price = parseInt(byId("poPrice").value) || 0;
-  byId("poProfit").innerText = (cost > 0 && price > 0)
+  const qty = parseInt(byId("poQty").value) || 0;
+  const brk = byId("poBreak");
+  const ready = cost > 0 && price > 0;
+  // Rincian per pcs — untuk penawaran ke klien yang melihat harga/pcs duluan.
+  // Markup partner = untung/HPP; per pcs identik dgn markup total (skala linear qty).
+  if (ready && qty > 0) {
+    const mPct = (price - cost) / cost * 100;
+    brk.hidden = false;
+    brk.innerHTML =
+      `<div class="row"><span class="lbl">Modal partner / pcs (HPP)</span><span class="dots"></span><strong class="val">${rp(cost / qty)}</strong></div>
+       <div class="row"><span class="lbl">Harga jual / pcs</span><span class="dots"></span><strong class="val">${rp(price / qty)}</strong></div>
+       <div class="row"><span class="lbl">Untung / pcs (markup ${Math.round(mPct)}%)</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp((price - cost) / qty)}</strong></div>`;
+  } else {
+    brk.hidden = true; brk.innerHTML = "";
+  }
+  byId("poProfit").innerText = ready
     ? `Profit: ${rp(price - cost)} (modal ${rp(cost)} → jual ${rp(price)})` : "";
 };
 window.openPartnerOrder = function (pre) {
@@ -2659,15 +2676,39 @@ function periodAgg(year, month) {
   return a;
 }
 
+// Arus kas satu hari (basis kas fisik): uang masuk = pembayaran, uang keluar =
+// SEMUA pengeluaran hari itu (termasuk belanja bahan) — ini kas, bukan profit.
+const isoDay = ts => { const t = new Date(ts); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); };
+function dayAgg(iso) {
+  const a = { cnt: 0, omzet: 0, masuk: 0, keluar: 0 };
+  POS.orders.forEach(o => {
+    if (isoDay(o.createdAt) === iso) { a.cnt++; a.omzet += o.price || 0; }
+    (o.payments || []).forEach(p => { if (isoDay(p.ts) === iso) a.masuk += p.amt || 0; });
+  });
+  POS.expenses.forEach(e => { if (e.date === iso) a.keluar += e.amt || 0; });
+  a.net = a.masuk - a.keluar;
+  return a;
+}
+
 window.renderReport = function () {
   const year = parseInt(byId("rptYear").value);
   const mv = byId("rptMonth").value;
   const month = mv === "all" ? -1 : parseInt(mv);
   const a = periodAgg(year, month);
   const label = month < 0 ? "tahun " + year : MONTH_LBL[month] + " " + year;
+  const t = dayAgg(todayIso());
+  const tLbl = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   let piutang = 0, piutangCnt = 0;
   POS.orders.forEach(o => { const s = (o.price || 0) - paidSum(o); if (s > 0) { piutang += s; piutangCnt++; } });
   let html = `
+    <div class="card">
+      <p class="card-title t-mag">Kas hari ini &middot; ${tLbl}</p>
+      <div class="row"><span class="lbl">Uang masuk (pembayaran)</span><span class="dots"></span><strong class="val" id="dayIn" style="color:var(--green)">${rp(t.masuk)}</strong></div>
+      <div class="row"><span class="lbl">Uang keluar (pengeluaran)</span><span class="dots"></span><strong class="val" id="dayOut" style="color:var(--danger)">${rp(t.keluar)}</strong></div>
+      <div class="total-row" style="margin-top:10px"><span class="lbl"><b>Selisih kas hari ini</b></span><span class="price-tag" id="dayNet" style="color:${t.net >= 0 ? "var(--green)" : "var(--danger)"}">${rpS(t.net)}</span></div>
+      <div class="row" style="font-size:12px"><span class="lbl">Order baru hari ini</span><span class="dots"></span><span class="val" id="dayOrders">${t.cnt} order &middot; ${rp(t.omzet)}</span></div>
+      <p class="set-hint" style="margin:8px 0 0">Arus kas hari ini (masuk &minus; keluar), lepas dari pilihan periode &mdash; untuk cek setoran / tutup toko harian.</p>
+    </div>
     <div class="card">
       <p class="card-title">Ringkasan ${label}</p>
       <div class="row"><span class="lbl">Order masuk</span><span class="dots"></span><strong class="val">${a.cnt} order</strong></div>

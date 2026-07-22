@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (155 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (186 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi
@@ -50,6 +50,13 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
 
 - **Snapshot harga**: order menyimpan salinan penuh kalkulasi (`o.calc`) + input
   (`o.inputs`). Order lama TIDAK boleh berubah saat settings berubah.
+- **Order multi-item (v35)**: satu order bisa berisi >1 item cetak (`o.items[]`,
+  tiap item {calc, inputs, price}). `o.calc`/`o.inputs` = cermin item pertama
+  (kompatibilitas). Order lama tanpa `o.items` dibungkus jadi 1 item lewat
+  `orderItems(o)` — TIDAK ada migrasi data. HPP order = `orderHpp(o)` (jumlah
+  item). Semua tampilan (kartu/detail/nota/resi/stok/laporan) loop lewat helper
+  ini. Item dikumpulkan via keranjang draft (`CART`) di kalkulator. Order
+  partner tetap 1 item.
 - **Repeat order** = hitung ulang dengan tarif sekarang + tampilkan harga lama
   sebagai pembanding (keputusan produk, bukan bug).
 - **Stok** terikat NAMA kertas; boleh minus (= order jalan, kertas belum dibeli);
@@ -117,4 +124,8 @@ via print dialog) → v30 optimasi cetak (area cetak 48/72, font tebal) + resi
 kirim (penerima/pengirim tanpa harga) → v31 kertas dari klien (jasa cetak
 saja, stok tak berkurang) + order partner (makloon: modal partner = HPP,
 markup utk profit) → v32 pengingat backup (banner "belum di-backup" tiap buka)
-+ tombol hapus semua data. Detail keputusan: `docs/KEPUTUSAN.md`.
++ tombol hapus semua data → v33 poles UI (nav bisa di-scroll, umpan balik
+sentuh di kartu/chip, kontras badge, tombol hapus lebih jelas) → v34 cari
+order (nomor/klien/pekerjaan) + ekspor laporan keuangan PDF → v35 order
+multi-item (beberapa ukuran/kertas dalam satu order via keranjang draft).
+Detail keputusan: `docs/KEPUTUSAN.md`.

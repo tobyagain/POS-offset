@@ -205,10 +205,20 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
 - Buka/tutup kas shift TETAP ditunda (lihat v37). PWA tidak mengubah itu.
 
 ## Poles UI/harga (v39) — dari uji pakai lapangan
-- **Alamat panjang membungkus rapi.** Alamat klien (mis. dari copy-paste
-  Tokopedia) sebelumnya satu baris `.val` `white-space:nowrap` → terpotong/luber.
-  Ditambah utilitas `.row.stack` (tumpuk label di atas, nilai penuh membungkus,
-  tanpa titik-titik) dan dipakai di baris Alamat detail order.
+- **Alamat/teks panjang membungkus rapi — cross-check semua area.** Alamat klien
+  (mis. copy-paste Tokopedia) sebelumnya meluber di beberapa tempat. Diaudit &
+  diperbaiki menyeluruh:
+  - **HTML detail order**: utilitas `.row.stack` (tumpuk label + nilai penuh
+    membungkus, tanpa titik-titik) di baris Alamat, Desain/file, dan Item
+    (deskripsi order partner).
+  - **Nota PDF** (perakit manual, tak auto-wrap): helper `pdfWrap(t,maxW,size)`
+    memecah per kata (kata super-panjang dipotong per karakter). Alamat klien &
+    alamat usaha (kop, dibatasi 2 baris) kini membungkus; `row()` jadi
+    wrap-aware — nilai panjang (desain/deskripsi) turun ke baris sendiri rata
+    kiri, nilai pendek (harga/qty) tetap rata kanan seperti semula.
+  - **Resi thermal**: `#resiPrint { overflow-wrap: anywhere }` agar token panjang
+    tak meluber di kertas sempit (58/72 mm).
+  - Laporan keuangan PDF hanya angka + label pendek → tak perlu wrap.
 - **Kalkulator bersih setelah simpan order.** Dulu hasil kalkulasi lama tetap
   tampil saat mulai order berikutnya (membingungkan + risiko dobel "jadikan
   order"). `resetCalcView()` menol-kan `lastCalc`/`lastAlts` & sembunyikan

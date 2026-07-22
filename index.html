@@ -514,7 +514,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 /* v29: resi thermal 58/80 mm — hanya tampil saat print.
    Head thermal 1-bit: font tipis tercetak abu/putus, jadi pakai sans tebal.
    @page = AREA CETAK (48/72 mm), bukan lebar kertas; konten mengisi penuh. */
-#resiPrint { display: none; font: 600 12px/1.45 Arial, Helvetica, sans-serif; color: #000; background: #fff; padding: 1mm 2mm 6mm; }
+#resiPrint { display: none; font: 600 12px/1.45 Arial, Helvetica, sans-serif; color: #000; background: #fff; padding: 1mm 2mm 6mm; overflow-wrap: anywhere; }
 #resiPrint.w80 { font-size: 13px; }
 #resiPrint .r-c { text-align: center; }
 #resiPrint .r-b { font-weight: 700; }
@@ -2078,7 +2078,7 @@ window.posOpenOrder = function (id) {
      <div class="row"><span class="lbl">Oplah</span><span class="dots"></span><strong class="val">${Number(cc.qty).toLocaleString("id-ID")} pcs</strong></div>
      <div class="row"><span class="lbl">Mata / plano</span><span class="dots"></span><strong class="val">${cc.mata} up · ${cc.totalPlano} plano</strong></div>`;
   const workHtml = o.calc.partner
-    ? `<div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">${esc(o.calc.desc)}</strong></div>
+    ? `<div class="row stack"><span class="lbl">Item</span><strong class="val">${esc(o.calc.desc)}</strong></div>
        ${o.calc.qty ? `<div class="row"><span class="lbl">Jumlah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>` : ""}
        ${o.partner && o.partner.name ? `<div class="row"><span class="lbl">Dikerjakan oleh</span><span class="dots"></span><strong class="val">${esc(o.partner.name)}</strong></div>` : ""}
        <div class="row"><span class="lbl">Modal partner</span><span class="dots"></span><strong class="val">${rp(o.calc.hppTotal)}${o.calc.qty ? " · " + rp(o.calc.hppTotal / o.calc.qty) + "/pcs" : ""}</strong></div>
@@ -2100,7 +2100,7 @@ window.posOpenOrder = function (id) {
     <div class="card">
       <p class="card-title t-mag">Pekerjaan${o.calc.partner ? ' <span class="badge pay-dp">Partner</span>' : multiItem ? ` <span class="badge st-order">${its.length} item</span>` : ""}</p>
       ${workHtml}
-      ${o.designNote ? `<div class="row"><span class="lbl">Desain / file</span><span class="dots"></span><strong class="val">${esc(o.designNote)}</strong></div>` : ""}
+      ${o.designNote ? `<div class="row stack"><span class="lbl">Desain / file</span><strong class="val">${esc(o.designNote)}</strong></div>` : ""}
       ${o.prev ? `<div class="oldprice">Repeat dari ${esc(o.prev.no)} — harga sebelumnya ${rp(o.prev.price)}</div>` : ""}
       <div class="form-group" style="margin-top:12px"><label>Status pengerjaan</label>
         <select id="odStatus" onchange="posSetStatus(this.value)">
@@ -3019,6 +3019,25 @@ function pdfW(t, size) {
   for (const ch of String(t)) w += (HELV_W[ch] || 556);
   return w * size / 1000;
 }
+// Bungkus teks (alamat/deskripsi panjang) ke beberapa baris yang muat maxW pt.
+// Pecah per kata; kata yang lebih panjang dari satu baris dipotong per karakter.
+function pdfWrap(t, maxW, size) {
+  const words = pdfSan(t).split(/\s+/).filter(Boolean);
+  const lines = []; let cur = "";
+  for (let w of words) {
+    while (pdfW(w, size) > maxW && w.length > 1) {
+      let i = w.length;
+      while (i > 1 && pdfW(w.slice(0, i), size) > maxW) i--;
+      if (cur) { lines.push(cur); cur = ""; }
+      lines.push(w.slice(0, i)); w = w.slice(i);
+    }
+    const cand = cur ? cur + " " + w : w;
+    if (pdfW(cand, size) <= maxW) cur = cand;
+    else { if (cur) lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [""];
+}
 function b64ToBytes(b64) {
   const bin = atob(b64);
   const u = new Uint8Array(bin.length);
@@ -3069,7 +3088,7 @@ function notaPdfBlob(o) {
   }
   txt(idX, PH - 46, biz.name || "Nota Penjualan", { bold: true, size: 12 });
   let iy = PH - 58;
-  if (biz.address) { txt(idX, iy, biz.address, { size: 7.5, col: GREY }); iy -= 9.5; }
+  if (biz.address) { pdfWrap(biz.address, Math.min(MR - idX, 200), 7.5).slice(0, 2).forEach(ln => { txt(idX, iy, ln, { size: 7.5, col: GREY }); iy -= 9.5; }); }
   if (biz.phone)   { txt(idX, iy, "Telp/WA " + biz.phone, { size: 7.5, col: GREY }); }
   txt(MR, PH - 40, "NOTA ORDER", { bold: true, size: 9.5, col: BRAND, right: true });
   txt(MR, PH - 53, o.no, { bold: true, size: 12.5, right: true });
@@ -3081,15 +3100,25 @@ function notaPdfBlob(o) {
   txt(ML, y, "KLIEN", { bold: true, size: 7.5, col: GREY }); y -= 14;
   txt(ML, y, c ? c.name : "-", { bold: true, size: 11.5 }); y -= 12;
   if (c && c.phone)   { txt(ML, y, c.phone,   { size: 9, col: GREY }); y -= 11; }
-  if (c && c.address) { txt(ML, y, c.address, { size: 9, col: GREY }); y -= 11; }
+  if (c && c.address) { pdfWrap(c.address, MR - ML, 9).forEach(ln => { txt(ML, y, ln, { size: 9, col: GREY }); y -= 11; }); }
   y -= 6; line(ML, y, MR, y); y -= 18;
 
   // pekerjaan
   txt(ML, y, "PEKERJAAN", { bold: true, size: 7.5, col: GREY }); y -= 15;
   const row = (l, v, opt) => {
-    txt(ML, y, l, { size: 9, col: GREY });
-    txt(MR, y, v, Object.assign({ size: 9, right: true }, opt || {}));
-    y -= 13;
+    opt = opt || {};
+    const sz = opt.size || 9;
+    const avail = MR - ML - pdfW(pdfSan(l), 9) - 10;
+    if (pdfW(pdfSan(v), sz) <= avail) {
+      txt(ML, y, l, { size: 9, col: GREY });
+      txt(MR, y, v, Object.assign({ size: sz, right: true }, opt));
+      y -= 13;
+    } else {
+      // nilai panjang (mis. alamat/desain/deskripsi): label sebaris, nilai membungkus rata kiri di bawahnya
+      txt(ML, y, l, { size: 9, col: GREY }); y -= 12;
+      pdfWrap(v, MR - ML - 12, sz).forEach(ln => { txt(ML + 12, y, ln, Object.assign({ size: sz }, opt, { right: false })); y -= 11.5; });
+      y -= 1.5;
+    }
   };
   if (o.calc.partner) {
     row("Item", o.calc.desc);

@@ -38,6 +38,7 @@ function boot({ width = 390, idb } = {}) {
       w.HTMLAnchorElement.prototype.click = function () { w.__downloaded = this.download; };
       w.scrollTo = noop;
       w.HTMLElement.prototype.scrollIntoView = noop;
+      w.TextEncoder = TextEncoder; // jsdom VM tak punya TextEncoder (dipakai perakit nota PDF)
       // jsdom belum punya Blob.text() -> polyfill lewat FileReader bawaan jsdom
       if (!w.Blob.prototype.text) w.Blob.prototype.text = function () {
         return new Promise((res, rej) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsText(this); });
@@ -110,6 +111,12 @@ async function confirmDialog(w, accept = true) {
   ok(d.getElementById("odBody").innerHTML.includes('class="row stack"') && d.getElementById("odBody").textContent.includes("Prapanca IV"), "alamat panjang dirender sebagai baris tumpuk yang membungkus");
   // Kalkulator bersih setelah order tersimpan (bukan sisa hitungan lama)
   ok(d.getElementById("results").style.display === "none", "hasil kalkulasi dibersihkan setelah order tersimpan");
+  // Nota PDF: alamat panjang dibungkus ke beberapa baris (bukan satu baris meluber)
+  await w.posShareNotaPdf(); await tick();
+  const notaTxt = await w.__lastBlob.text();
+  ok(notaTxt.startsWith("%PDF-"), "nota PDF valid untuk order beralamat panjang");
+  ok(notaTxt.includes("Prapanca") && notaTxt.includes("Kebayoran"), "nota PDF memuat seluruh alamat panjang");
+  ok(!notaTxt.includes("Ibukota Jakarta [Tokopedia Note: Jalan Prapanca IV No. 66] Kebayoran"), "nota PDF: alamat panjang dipecah ke beberapa baris (tidak satu baris utuh)");
   ok(d.getElementById("odBody").innerHTML.includes("pay-dp"), "DP 100rb tercatat sebagai status DP");
 
   // Intent: snapshot — harga order TIDAK berubah saat settings berubah (lewat UI settings asli)

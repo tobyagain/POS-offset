@@ -2676,15 +2676,39 @@ function periodAgg(year, month) {
   return a;
 }
 
+// Arus kas satu hari (basis kas fisik): uang masuk = pembayaran, uang keluar =
+// SEMUA pengeluaran hari itu (termasuk belanja bahan) — ini kas, bukan profit.
+const isoDay = ts => { const t = new Date(ts); return t.getFullYear() + "-" + String(t.getMonth() + 1).padStart(2, "0") + "-" + String(t.getDate()).padStart(2, "0"); };
+function dayAgg(iso) {
+  const a = { cnt: 0, omzet: 0, masuk: 0, keluar: 0 };
+  POS.orders.forEach(o => {
+    if (isoDay(o.createdAt) === iso) { a.cnt++; a.omzet += o.price || 0; }
+    (o.payments || []).forEach(p => { if (isoDay(p.ts) === iso) a.masuk += p.amt || 0; });
+  });
+  POS.expenses.forEach(e => { if (e.date === iso) a.keluar += e.amt || 0; });
+  a.net = a.masuk - a.keluar;
+  return a;
+}
+
 window.renderReport = function () {
   const year = parseInt(byId("rptYear").value);
   const mv = byId("rptMonth").value;
   const month = mv === "all" ? -1 : parseInt(mv);
   const a = periodAgg(year, month);
   const label = month < 0 ? "tahun " + year : MONTH_LBL[month] + " " + year;
+  const t = dayAgg(todayIso());
+  const tLbl = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   let piutang = 0, piutangCnt = 0;
   POS.orders.forEach(o => { const s = (o.price || 0) - paidSum(o); if (s > 0) { piutang += s; piutangCnt++; } });
   let html = `
+    <div class="card">
+      <p class="card-title t-mag">Kas hari ini &middot; ${tLbl}</p>
+      <div class="row"><span class="lbl">Uang masuk (pembayaran)</span><span class="dots"></span><strong class="val" id="dayIn" style="color:var(--green)">${rp(t.masuk)}</strong></div>
+      <div class="row"><span class="lbl">Uang keluar (pengeluaran)</span><span class="dots"></span><strong class="val" id="dayOut" style="color:var(--danger)">${rp(t.keluar)}</strong></div>
+      <div class="total-row" style="margin-top:10px"><span class="lbl"><b>Selisih kas hari ini</b></span><span class="price-tag" id="dayNet" style="color:${t.net >= 0 ? "var(--green)" : "var(--danger)"}">${rpS(t.net)}</span></div>
+      <div class="row" style="font-size:12px"><span class="lbl">Order baru hari ini</span><span class="dots"></span><span class="val" id="dayOrders">${t.cnt} order &middot; ${rp(t.omzet)}</span></div>
+      <p class="set-hint" style="margin:8px 0 0">Arus kas hari ini (masuk &minus; keluar), lepas dari pilihan periode &mdash; untuk cek setoran / tutup toko harian.</p>
+    </div>
     <div class="card">
       <p class="card-title">Ringkasan ${label}</p>
       <div class="row"><span class="lbl">Order masuk</span><span class="dots"></span><strong class="val">${a.cnt} order</strong></div>

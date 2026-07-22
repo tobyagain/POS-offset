@@ -118,6 +118,13 @@ async function confirmDialog(w, accept = true) {
   ok(Math.abs(num(d.getElementById("rptProfit").textContent) - expProfit) <= 1, "profit bersih = omzet - HPP - operasional");
   ok(num(d.getElementById("rptPiutang").textContent) === price - 100000, "piutang = sisa tagihan order belum lunas");
 
+  // Kas hari ini (arus kas harian, lepas dari periode) — DP & order dibuat "now"
+  ok(d.getElementById("rptBody").textContent.includes("Kas hari ini"), "kartu kas hari ini tampil di laporan");
+  ok(num(d.getElementById("dayIn").textContent) === 100000, "kas hari ini: uang masuk = DP dibayar hari ini");
+  ok(d.getElementById("dayOrders").textContent.includes("1 order"), "kas hari ini: 1 order baru hari ini");
+  const dIn = num(d.getElementById("dayIn").textContent), dOut = num(d.getElementById("dayOut").textContent), dNet = num(d.getElementById("dayNet").textContent);
+  ok(Math.abs(dIn - dOut) === dNet, "kas hari ini: selisih = uang masuk - uang keluar");
+
   // Mode setahun penuh: rincian per bulan tampil
   d.getElementById("rptMonth").value = "all";
   w.renderReport();

@@ -159,6 +159,24 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
 - Jumlah/pcs tetap opsional; rincian per pcs disembunyikan saat kosong.
 - Order lama tanpa qty tak berubah (rincian /pcs cuma muncul bila ada qty).
 
+## Kas harian + buka/tutup POS (v37)
+- **Rekap kas harian: DIKERJAKAN.** Kartu "Kas hari ini" di atas tab
+  Keuangan → Laporan: uang masuk (pembayaran hari ini), uang keluar (SEMUA
+  pengeluaran hari ini — arus kas, termasuk belanja bahan), selisih, + jumlah
+  order baru hari ini. Dipatok ke tanggal hari ini, lepas dari pilihan periode
+  (mirip kartu piutang). Data sudah ada (`payments[].ts`, `expenses[].date`) —
+  hanya lensa harian lewat `dayAgg()`, tanpa store baru / migrasi.
+- Beda dgn laporan bulanan yang berbasis PROFIT: kartu harian murni ARUS KAS
+  (uang keluar = semua pengeluaran, tidak memisah operasional vs bahan).
+- **Sistem buka/tutup kas (shift) per jam kerja: DITUNDA (sengaja).**
+  Alasan: model Dahlia Pack = job-order (order + DP + pelunasan lintas hari,
+  banyak transfer), bukan kasir ritel frekuensi tinggi. Ritual buka/tutup
+  menambah beban harian + mode gagal (lupa buka → data bolong), sementara
+  payoff-nya (rekonsiliasi uang laci fisik vs sistem) kecil bila tunai sedikit.
+  Baru worth bila: ada laci kas fisik + kasir bergiliran + perlu cek selisih
+  fisik. Alternatif lebih ringan bila cuma butuh saldo laci: "saldo kas
+  berjalan" tanpa ritual. Jangan bangun buka/tutup tanpa keputusan Toby.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

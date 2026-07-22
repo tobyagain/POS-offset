@@ -102,6 +102,17 @@ const vis = (w, id) => !w.document.getElementById(id).hidden;
   // poProfit ditulis via innerText (expando di jsdom) — baca lewat innerText
   ok(String(d.getElementById("poProfit").innerText).includes("100.000"), "info profit 100rb tampil");
 
+  // Rincian per pcs (qty 100): HPP/pcs 5rb, jual/pcs 6rb, untung/pcs 1rb + markup 20%
+  const brk = d.getElementById("poBreak");
+  ok(!brk.hidden, "rincian per pcs tampil saat jumlah diisi");
+  ok(brk.textContent.includes("5.000") && brk.textContent.includes("Modal partner / pcs"), "rincian: modal/pcs = 5.000");
+  ok(brk.textContent.includes("6.000") && brk.textContent.includes("Harga jual / pcs"), "rincian: harga jual/pcs = 6.000");
+  ok(brk.textContent.includes("1.000") && brk.textContent.includes("markup 20%"), "rincian: untung/pcs = 1.000 (markup 20%)");
+  // Tanpa jumlah: rincian per pcs disembunyikan (order partner boleh tanpa qty)
+  d.getElementById("poQty").value = ""; w.poInfo();
+  ok(brk.hidden, "rincian per pcs disembunyikan saat jumlah kosong");
+  d.getElementById("poQty").value = "100"; w.poInfo();
+
   // Penawaran ke klien: deskripsi + harga jual, TANPA modal partner & TANPA identitas usaha
   w.__shared = "";
   w.poSharePenawaran();
@@ -113,6 +124,7 @@ const vis = (w, id) => !w.document.getElementById(id).hidden;
   await w.savePartnerOrder(); await tick();
   ok(vis(w, "scrOrderDetail") && d.getElementById("odBody").textContent.includes("Nota NCR 2 ply"), "order partner tersimpan, detail memuat deskripsi");
   ok(d.getElementById("odBody").textContent.includes("Percetakan X") && d.getElementById("odBody").textContent.includes("500.000"), "detail memuat nama partner + modal");
+  ok(d.getElementById("odBody").textContent.includes("5.000/pcs") && d.getElementById("odBody").textContent.includes("Harga jual / pcs"), "detail order partner memuat rincian per pcs");
   const partnerNo = d.getElementById("odTitle").innerText;
 
   // Resi order partner: deskripsi tampil, tanpa data kalkulasi & tanpa modal

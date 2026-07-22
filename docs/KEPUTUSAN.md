@@ -148,6 +148,17 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   valid tak memicu reminder.
 - Order partner tetap 1 item (makloon = 1 harga borongan).
 
+## Rincian per pcs — order partner (v36)
+- Kebutuhan: klien lihat **harga /pcs** duluan; Toby perlu rincian saat menyusun
+  penawaran order partner (makloon).
+- Ditambah di form order partner (saat Jumlah/pcs diisi) & di detail order:
+  **Modal partner / pcs (HPP)**, **Harga jual / pcs**, **Untung / pcs** + markup%.
+- Bukan input baru — hanya tampilan turunan. Markup partner (untung/HPP) per pcs
+  identik dengan markup total karena skala linear terhadap qty, jadi input harga
+  tetap satu jalur (Modal + Markup% → Harga jual, seperti sebelumnya).
+- Jumlah/pcs tetap opsional; rincian per pcs disembunyikan saat kosong.
+- Order lama tanpa qty tak berubah (rincian /pcs cuma muncul bila ada qty).
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

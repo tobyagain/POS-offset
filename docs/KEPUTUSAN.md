@@ -204,6 +204,82 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   Pages → source `main` / root) setelah merge, lalu uji install di HP.
 - Buka/tutup kas shift TETAP ditunda (lihat v37). PWA tidak mengubah itu.
 
+## Poles UI/harga (v39) — dari uji pakai lapangan
+- **Alamat/teks panjang membungkus rapi — cross-check semua area.** Alamat klien
+  (mis. copy-paste Tokopedia) sebelumnya meluber di beberapa tempat. Diaudit &
+  diperbaiki menyeluruh:
+  - **HTML detail order**: utilitas `.row.stack` (tumpuk label + nilai penuh
+    membungkus, tanpa titik-titik) di baris Alamat, Desain/file, dan Item
+    (deskripsi order partner).
+  - **Nota PDF** (perakit manual, tak auto-wrap): helper `pdfWrap(t,maxW,size)`
+    memecah per kata (kata super-panjang dipotong per karakter). Alamat klien &
+    alamat usaha (kop, dibatasi 2 baris) kini membungkus; `row()` jadi
+    wrap-aware — nilai panjang (desain/deskripsi) turun ke baris sendiri rata
+    kiri, nilai pendek (harga/qty) tetap rata kanan seperti semula.
+  - **Resi thermal**: `#resiPrint { overflow-wrap: anywhere }` agar token panjang
+    tak meluber di kertas sempit (58/72 mm).
+  - Laporan keuangan PDF hanya angka + label pendek → tak perlu wrap.
+- **Kalkulator bersih setelah simpan order.** Dulu hasil kalkulasi lama tetap
+  tampil saat mulai order berikutnya (membingungkan + risiko dobel "jadikan
+  order"). `resetCalcView()` menol-kan `lastCalc`/`lastAlts` & sembunyikan
+  `#results` setelah `saveNewOrder`. Form (mesin/kertas/ukuran) TIDAK dihapus —
+  cuma hasilnya, jadi order baru wajib hitung ulang.
+- **Watermark logo nota PDF 5% → 7%.** ExtGState `ca/CA 0.05 → 0.07` (permintaan
+  Toby: tile logo terlalu pudar). Tetap disiplin tile miring -15°.
+- **Total penawaran dibulatkan KE ATAS ke kelipatan Rp 1.000.** Di `quoteFor`:
+  `totalOffer = ceil(rawOffer/1000)*1000`, `roundAdj = totalOffer - rawOffer`.
+  Baris "Pembulatan ke atas (+Rp X)" muncul di Penawaran hanya bila `roundAdj>0`
+  (permintaan Toby: tetap ada rinciannya). Pembulatan mengalir ke profit
+  (omzet naik → laporan tetap konsisten). Unit `OFFER_ROUND` gampang diubah bila
+  Toby mau kelipatan lain (500/5.000). Berlaku juga utk perbandingan oplah & alts.
+
+## Temuan uji pakai v40 (ongkir, stok, resi)
+- **Stok opname TIDAK memengaruhi omzet/HPP/laporan.** Dikonfirmasi dari kode:
+  `stockApply()` hanya menulis `POS.stock` (qty + log). Laporan (`periodAgg`)
+  dihitung dari order (`o.price`/`ordProduk`, `orderHpp`) + pengeluaran — tak
+  pernah membaca stok. Aman.
+- **Lebar kertas resi (58/80) pindah ke Pengaturan.** Dropdown per-cetak di
+  detail order dihapus (`#odResiW`); jadi satu setting di Pengaturan (`#setResiW`
+  → `meta.thermal`). Alasan Toby: printer thermal-nya tetap, dan dialog print
+  browser toh sudah minta pilih printer — dropdown per-cetak mubazir.
+- **Ongkir ditagihkan ke klien, di luar omzet/profit.**
+  - Model: `o.price` = **total tagihan (produk + ongkir)** → semua jalur
+    pembayaran/piutang/lunas/nota/resi/kartu pakai `o.price` apa adanya (tak ada
+    threading rumit). `o.ongkir` disimpan terpisah (opsional). Helper
+    `ordProduk(o) = o.price − ongkir`.
+  - **Omzet & profit pakai `ordProduk`** (produk saja) — ongkir bukan penjualan,
+    bukan profit; ia titipan yang diteruskan. Kas masuk (pembayaran) tetap uang
+    riil termasuk bagian ongkir; piutang = total tagihan − dibayar (incl ongkir).
+    Kalau Toby bayar kurir sendiri, catat lewat Pengeluaran (opsional).
+  - Form order (biasa & partner): "Harga produk"/"Harga jual" + "Ongkir" →
+    "Total tagihan". Rincian Produk/Ongkir/Total muncul di detail, nota WA, nota
+    PDF, dan resi HANYA bila `o.ongkir > 0` (order lama tanpa ongkir tak berubah).
+  - Order partner: `calc.totalOffer` tetap = jual (tanpa ongkir); profit partner
+    pakai `ordProduk` supaya ongkir tak terhitung sebagai untung makloon.
+- **Format resi multi-item dirapikan.** Dulu satu baris padat
+  "bahan · qty · harga" → berantakan di kertas sempit. Sekarang per item: header
+  tebal "N. UkuranxUkuran cm, K warna", baris bahan+qty, lalu `Subtotal` rata
+  kanan (pakai `.r-row`). Konsisten dgn baris TOTAL/SISA.
+
+## Input uang berpemisah ribuan + poles tombol (v41)
+- **Angka uang berpemisah ribuan saat diketik.** `<input type="number">` tak bisa
+  menampilkan titik ribuan, jadi 9 field uang (noPrice, noOngkir, noDP, poCost,
+  poPrice, poOngkir, poDP, baseProfit, expAmt) diubah ke `type="text"
+  inputmode="numeric"` + `oninput="fmtNum(this)"`. Helper baru: `fmtNum(el)`
+  format live (id-ID → titik), `pInt(v)` baca balik ke integer (buang non-digit),
+  `grp(n)` untuk mengisi `.value` terformat. SEMUA baca (`parseInt(...value)`) →
+  `pInt`, SEMUA tulis prefill (`.value = n`) → `grp(n)`. Field non-uang
+  (pW/pH/qty/gsm/markup%/dimensi) TETAP `number` — magnitudonya kecil/struktural.
+  Tes: `.value` field uang dibaca via `num()` (bukan `parseInt`, yg berhenti di
+  titik pertama). Stok (lembar) belum diformat — kandidat lanjutan bila diminta.
+- **Tombol Resi order/kirim dirapikan.** Dulu di `.pay-add` (sisa dropdown lebar
+  kertas yg dipindah ke Pengaturan) → dua tombol `width:auto` kecil rata kiri,
+  tak konsisten. Sekarang `.btn-row` (flex:1 each) → dua tombol sama lebar.
+- **Repeat order dikonfirmasi BERFUNGSI.** Diuji ulang (jsdom + runtime): klik
+  Repeat → prefill form + hitung ulang → pindah ke layar Hasil, tanpa error.
+  Kesan "tidak berfungsi" kemungkinan dari kartu tombol yg berantakan (sudah
+  dirapikan). Tidak ada perubahan logika repeat.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

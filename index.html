@@ -224,6 +224,10 @@ input::placeholder { color: var(--text-3); font-weight: 400; }
 }
 .row .lbl { color: var(--text-2); }
 .row .val { font-weight: 700; white-space: nowrap; color: var(--text); }
+/* baris nilai panjang (mis. alamat) — tumpuk & bungkus rapi, tanpa titik-titik */
+.row.stack { flex-direction: column; align-items: stretch; gap: 3px; }
+.row.stack .dots { display: none; }
+.row.stack .val { white-space: normal; text-align: left; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
 
 canvas {
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
@@ -510,7 +514,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 /* v29: resi thermal 58/80 mm — hanya tampil saat print.
    Head thermal 1-bit: font tipis tercetak abu/putus, jadi pakai sans tebal.
    @page = AREA CETAK (48/72 mm), bukan lebar kertas; konten mengisi penuh. */
-#resiPrint { display: none; font: 600 12px/1.45 Arial, Helvetica, sans-serif; color: #000; background: #fff; padding: 1mm 2mm 6mm; }
+#resiPrint { display: none; font: 600 12px/1.45 Arial, Helvetica, sans-serif; color: #000; background: #fff; padding: 1mm 2mm 6mm; overflow-wrap: anywhere; }
 #resiPrint.w80 { font-size: 13px; }
 #resiPrint .r-c { text-align: center; }
 #resiPrint .r-b { font-weight: 700; }
@@ -605,7 +609,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
           </div>
         </div>
         <div class="grid">
-          <div class="form-group"><label>Profit dasar (Rp) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="baseProfit" value="250000"><div class="hint" hidden>Keuntungan minimum per pekerjaan, berlaku untuk semua oplah.</div></div>
+          <div class="form-group"><label>Profit dasar (Rp) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="text" inputmode="numeric" id="baseProfit" value="250.000" oninput="fmtNum(this)"><div class="hint" hidden>Keuntungan minimum per pekerjaan, berlaku untuk semua oplah.</div></div>
           <div class="form-group"><label>Markup oplah (%) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="markup" value="100"><div class="hint" hidden>Keuntungan tambahan untuk oplah di atas 1.000 pcs &mdash; dihitung dari modal per pcs, untuk tiap pcs di atas 1.000.</div></div>
         </div>
       </div>
@@ -693,6 +697,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
           <div class="row"><span class="lbl">Profit dasar</span><span class="dots"></span><span id="fProfBase" class="val"></span></div>
           <div class="row"><span class="lbl">Markup oplah (<span id="txtMarkup"></span>%)</span><span class="dots"></span><span id="fProfMark" class="val"></span></div>
           <div class="row"><span class="lbl"><b>Total keuntungan</b></span><span class="dots"></span><span id="fProfTotal" class="val profit-val" style="font-weight:800"></span></div>
+          <div class="row" id="rowRound" hidden><span class="lbl">Pembulatan ke atas</span><span class="dots"></span><span id="fRound" class="val"></span></div>
           <div class="hr"></div>
           <div class="total-row"><span class="lbl">Total penawaran</span><span class="price-tag" id="fTotal"></span></div>
           <div class="unit-row">Harga jual / pcs: <b id="fUnit"></b></div>
@@ -760,6 +765,13 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         </div>
         <input type="file" id="logoFile" accept="image/*" hidden onchange="bizLogoUpload(this.files[0])">
         <div id="logoPrev" style="margin-top:8px"></div>
+      </div>
+      <div class="form-group"><label>Ukuran kertas resi thermal</label>
+        <p class="set-hint" style="margin:0 0 6px">Sesuaikan dengan printer thermal-mu. Dipakai untuk semua cetak resi.</p>
+        <select id="setResiW" onchange="thermalSetWidth(this.value)">
+          <option value="58">Kertas 58 mm</option>
+          <option value="80">Kertas 80 mm</option>
+        </select>
       </div>
       <div class="form-group"><label>Tanda tangan (opsional)</label>
         <p class="set-hint" style="margin:0 0 6px">Tampil di blok "Hormat kami" nota PDF. Kosongkan jika mau ditandatangani manual.</p>
@@ -839,7 +851,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <p class="card-title t-yel">Catat pengeluaran</p>
         <div class="grid">
           <div class="form-group"><label>Tanggal</label><input type="date" id="expDate"></div>
-          <div class="form-group"><label>Nominal (Rp)</label><input type="number" id="expAmt" placeholder="0"></div>
+          <div class="form-group"><label>Nominal (Rp)</label><input type="text" inputmode="numeric" id="expAmt" placeholder="0" oninput="fmtNum(this)"></div>
         </div>
         <div class="form-group"><label>Kategori / jenis</label><input type="text" id="expCat" list="expCatDl" placeholder="cth: listrik, gaji, servis mesin"><datalist id="expCatDl"></datalist></div>
         <div class="form-group"><label>Catatan &mdash; opsional</label><input type="text" id="expNote" placeholder="cth: token listrik bengkel"></div>
@@ -872,8 +884,12 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       <p class="card-title t-yel">Detail order</p>
       <div class="form-group"><label>Catatan desain / file &mdash; opsional</label><input type="text" id="noDesign" placeholder="cth: nota-toko-abc-v2.pdf &middot; plat lama rak B"></div>
       <div class="grid">
-        <div class="form-group"><label>Harga total (Rp)</label><input type="number" id="noPrice"></div>
-        <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="noDP" placeholder="0"></div>
+        <div class="form-group"><label>Harga produk (Rp)</label><input type="text" inputmode="numeric" id="noPrice" oninput="fmtNum(this);noBillInfo()"></div>
+        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noOngkir" placeholder="0" oninput="fmtNum(this);noBillInfo()"></div>
+      </div>
+      <div class="grid">
+        <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noDP" placeholder="0" oninput="fmtNum(this)"></div>
+        <div class="form-group"><label>Total tagihan klien</label><input type="text" id="noTotal" readonly tabindex="-1" style="background:var(--brand-soft);font-weight:800;color:var(--brand-strong)"></div>
       </div>
       <button class="btn-primary" onclick="saveNewOrder()">Simpan order</button>
     </div>
@@ -902,13 +918,14 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <div class="form-group"><label>Nama partner &mdash; opsional</label><input type="text" id="poPartner" placeholder="cth: Percetakan X"></div>
       </div>
       <div class="grid">
-        <div class="form-group"><label>Modal dari partner (Rp)</label><input type="number" id="poCost" oninput="poRecalc()"></div>
+        <div class="form-group"><label>Modal dari partner (Rp)</label><input type="text" inputmode="numeric" id="poCost" oninput="fmtNum(this);poRecalc()"></div>
         <div class="form-group"><label>Markup (%)</label><input type="number" id="poMarkup" value="20" oninput="poRecalc()"></div>
       </div>
       <div class="grid">
-        <div class="form-group"><label>Harga jual ke klien (Rp)</label><input type="number" id="poPrice" oninput="poInfo()"></div>
-        <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="poDP" placeholder="0"></div>
+        <div class="form-group"><label>Harga jual ke klien (Rp)</label><input type="text" inputmode="numeric" id="poPrice" oninput="fmtNum(this);poInfo()"></div>
+        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="poOngkir" placeholder="0" oninput="fmtNum(this);poInfo()"></div>
       </div>
+      <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="poDP" placeholder="0" oninput="fmtNum(this)"></div>
       <div id="poBreak" hidden style="margin:0 0 8px"></div>
       <p class="set-hint" id="poProfit" style="margin:0 0 10px"></p>
       <button class="btn-ghost" onclick="poSharePenawaran()">Kirim penawaran<small>untuk klien &middot; tanpa modal partner</small></button>
@@ -1145,6 +1162,7 @@ function resetSettings() {
 
 // ================= KALKULASI =================
 let planoW = 75, planoH = 100, priceP = 1300;
+const OFFER_ROUND = 1000;    // total penawaran dibulatkan KE ATAS ke kelipatan ini (rupiah)
 let machineEffW = 50, machineEffH = 70;
 let baseCost = 160000, overCost = 50000;
 let gripReminderOff = false; // reminder gripper: aktif lagi setelah toggle manual / auto-disable
@@ -1152,6 +1170,16 @@ let lastCalc = null;         // snapshot hasil kalkulasi terakhir untuk fitur ki
 
 // ================= KIRIM PER AUDIENS =================
 const rp = n => "Rp " + Math.round(n).toLocaleString("id-ID");
+
+// Input angka berpemisah ribuan (v41): field uang bertipe text + inputmode numeric.
+// grp(n) memformat angka untuk ditaruh ke .value; pInt(v) membaca balik ke integer
+// (buang titik/karakter non-digit). fmtNum(el) memformat live saat mengetik.
+const grp = n => (n === "" || n === null || n === undefined) ? "" : Number(n).toLocaleString("id-ID");
+const pInt = v => parseInt(String(v).replace(/[^\d]/g, ""), 10) || 0;
+window.fmtNum = function (el) {
+  const digits = el.value.replace(/[^\d]/g, "");
+  el.value = digits ? Number(digits).toLocaleString("id-ID") : "";
+};
 
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -1317,9 +1345,13 @@ function quoteFor(scenarios, qty, colorCount, bProf, mPct) {
   const hppPerUnit = hppTotal / qty;
   const profitMarkup = (qty > 1000) ? (qty - 1000) * hppPerUnit * (mPct / 100) : 0;
   const totalProfit = bProf + profitMarkup;
-  const totalOffer = hppTotal + totalProfit;
+  const rawOffer = hppTotal + totalProfit;
+  // Pembulatan total penawaran KE ATAS ke kelipatan OFFER_ROUND (rupiah).
+  // Selisihnya (roundAdj) ditampilkan sebagai baris "Pembulatan" & menambah profit.
+  const totalOffer = Math.ceil(rawOffer / OFFER_ROUND) * OFFER_ROUND;
+  const roundAdj = totalOffer - rawOffer;
   return { best, qty, totalQtyProd, drukNett, drukTotal, totalPlano, extraDruk,
-           costPaper, costDruk, hppTotal, hppPerUnit, profitMarkup, totalProfit, totalOffer };
+           costPaper, costDruk, hppTotal, hppPerUnit, profitMarkup, totalProfit, rawOffer, roundAdj, totalOffer };
 }
 
 function parseAlts(qty) {
@@ -1390,7 +1422,7 @@ let lastAlts = null;
 
 function doCalculate(pW, pH, qty, scenarios, gOn) {
   const colorCount = parseInt(document.getElementById("colors").value);
-  const bProf = parseInt(document.getElementById("baseProfit").value) || 0;
+  const bProf = pInt(document.getElementById("baseProfit").value) || 0;
   const mPct = parseFloat(document.getElementById("markup").value) || 0;
 
   const q = quoteFor(scenarios, qty, colorCount, bProf, mPct);
@@ -1473,6 +1505,11 @@ function doCalculate(pW, pH, qty, scenarios, gOn) {
   document.getElementById("fTotal").innerText = "Rp " + Math.round(q.totalOffer).toLocaleString();
   document.getElementById("fUnit").innerText = "Rp " + Math.round(q.totalOffer / qty).toLocaleString();
   document.getElementById("fProfTotal").innerText = "Rp " + Math.round(q.totalProfit).toLocaleString();
+  const rowRound = document.getElementById("rowRound");
+  if (q.roundAdj > 0) {
+    rowRound.hidden = false;
+    document.getElementById("fRound").innerText = "+ Rp " + Math.round(q.roundAdj).toLocaleString();
+  } else rowRound.hidden = true;
 
   drawLayout(best);
 
@@ -1940,6 +1977,11 @@ const byId = id => document.getElementById(id);
 const STATUS_LBL = { order: "Order", produksi: "Produksi", selesai: "Selesai", diambil: "Diambil" };
 const STATUS_SEQ = ["order", "produksi", "selesai", "diambil"];
 const paidSum = o => (o.payments || []).reduce((s, p) => s + (p.amt || 0), 0);
+// Ongkir (v40): o.price = total tagihan ke klien (produk + ongkir) → semua jalur
+// pembayaran/piutang/lunas tetap pakai o.price apa adanya. ordProduk = nilai
+// produk saja (tanpa ongkir) — dipakai untuk omzet & profit (ongkir bukan omzet,
+// bukan profit; ia titipan yang diteruskan ke klien). Order lama tanpa o.ongkir → produk = price.
+const ordProduk = o => (o.price || 0) - (o.ongkir || 0);
 function payBadge(o) {
   const p = paidSum(o);
   if (p <= 0) return ["Belum bayar", "pay-none"];
@@ -2063,12 +2105,12 @@ window.posOpenOrder = function (id) {
      <div class="row"><span class="lbl">Oplah</span><span class="dots"></span><strong class="val">${Number(cc.qty).toLocaleString("id-ID")} pcs</strong></div>
      <div class="row"><span class="lbl">Mata / plano</span><span class="dots"></span><strong class="val">${cc.mata} up · ${cc.totalPlano} plano</strong></div>`;
   const workHtml = o.calc.partner
-    ? `<div class="row"><span class="lbl">Item</span><span class="dots"></span><strong class="val">${esc(o.calc.desc)}</strong></div>
+    ? `<div class="row stack"><span class="lbl">Item</span><strong class="val">${esc(o.calc.desc)}</strong></div>
        ${o.calc.qty ? `<div class="row"><span class="lbl">Jumlah</span><span class="dots"></span><strong class="val">${Number(o.calc.qty).toLocaleString("id-ID")} pcs</strong></div>` : ""}
        ${o.partner && o.partner.name ? `<div class="row"><span class="lbl">Dikerjakan oleh</span><span class="dots"></span><strong class="val">${esc(o.partner.name)}</strong></div>` : ""}
        <div class="row"><span class="lbl">Modal partner</span><span class="dots"></span><strong class="val">${rp(o.calc.hppTotal)}${o.calc.qty ? " · " + rp(o.calc.hppTotal / o.calc.qty) + "/pcs" : ""}</strong></div>
-       ${o.calc.qty ? `<div class="row"><span class="lbl">Harga jual / pcs</span><span class="dots"></span><strong class="val">${rp(o.price / o.calc.qty)}</strong></div>` : ""}
-       <div class="row"><span class="lbl">Profit</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp(o.price - o.calc.hppTotal)}${o.calc.qty ? " · " + rp((o.price - o.calc.hppTotal) / o.calc.qty) + "/pcs" : ""}</strong></div>`
+       ${o.calc.qty ? `<div class="row"><span class="lbl">Harga jual / pcs</span><span class="dots"></span><strong class="val">${rp(ordProduk(o) / o.calc.qty)}</strong></div>` : ""}
+       <div class="row"><span class="lbl">Profit</span><span class="dots"></span><strong class="val" style="color:var(--green)">${rp(ordProduk(o) - o.calc.hppTotal)}${o.calc.qty ? " · " + rp((ordProduk(o) - o.calc.hppTotal) / o.calc.qty) + "/pcs" : ""}</strong></div>`
     : multiItem
     ? its.map((it, i) => `<div class="row" style="border-bottom:0;padding-bottom:0;margin-top:${i ? 12 : 0}px"><span class="lbl" style="font-weight:800;color:var(--text)">Item ${i + 1}</span><span class="val"><b>${rp(it.price)}</b></span></div>${detailRows(it.calc)}`).join("") +
       `<div class="row" style="border-top:1px solid var(--border);margin-top:8px"><span class="lbl"><b>Subtotal ${its.length} item</b></span><span class="val"><b>${rp(itsTotal)}</b></span></div>`
@@ -2078,14 +2120,14 @@ window.posOpenOrder = function (id) {
       <p class="card-title">Klien</p>
       <div class="row"><span class="lbl">Nama</span><span class="dots"></span><strong class="val">${esc(c ? c.name : "(terhapus)")}</strong></div>
       ${c && c.phone ? `<div class="row"><span class="lbl">Telepon</span><span class="dots"></span><strong class="val">${esc(c.phone)}</strong></div>` : ""}
-      ${c && c.address ? `<div class="row"><span class="lbl">Alamat</span><span class="dots"></span><strong class="val">${esc(c.address)}</strong></div>` : ""}
+      ${c && c.address ? `<div class="row stack"><span class="lbl">Alamat</span><strong class="val">${esc(c.address)}</strong></div>` : ""}
       <div class="row"><span class="lbl">Dibuat</span><span class="dots"></span><strong class="val">${new Date(o.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</strong></div>
       ${o.deadline ? `<div class="row"><span class="lbl">Deadline</span><span class="dots"></span><strong class="val"${isLate(o) ? ' style="color:var(--danger)"' : ""}>${fmtDate(o.deadline)}</strong></div>` : ""}
     </div>
     <div class="card">
       <p class="card-title t-mag">Pekerjaan${o.calc.partner ? ' <span class="badge pay-dp">Partner</span>' : multiItem ? ` <span class="badge st-order">${its.length} item</span>` : ""}</p>
       ${workHtml}
-      ${o.designNote ? `<div class="row"><span class="lbl">Desain / file</span><span class="dots"></span><strong class="val">${esc(o.designNote)}</strong></div>` : ""}
+      ${o.designNote ? `<div class="row stack"><span class="lbl">Desain / file</span><strong class="val">${esc(o.designNote)}</strong></div>` : ""}
       ${o.prev ? `<div class="oldprice">Repeat dari ${esc(o.prev.no)} — harga sebelumnya ${rp(o.prev.price)}</div>` : ""}
       <div class="form-group" style="margin-top:12px"><label>Status pengerjaan</label>
         <select id="odStatus" onchange="posSetStatus(this.value)">
@@ -2095,27 +2137,25 @@ window.posOpenOrder = function (id) {
     </div>
     <div class="card">
       <p class="card-title t-yel">Pembayaran <span class="badge ${pc}" style="margin-left:6px">${pl}</span></p>
-      <div class="row"><span class="lbl">Harga total</span><span class="dots"></span><strong class="val">${rp(o.price)}</strong></div>
+      ${o.ongkir ? `<div class="row"><span class="lbl">Produk</span><span class="dots"></span><strong class="val">${rp(ordProduk(o))}</strong></div>
+      <div class="row"><span class="lbl">Ongkir</span><span class="dots"></span><strong class="val">${rp(o.ongkir)}</strong></div>` : ""}
+      <div class="row"><span class="lbl">${o.ongkir ? "Total tagihan" : "Harga total"}</span><span class="dots"></span><strong class="val">${rp(o.price)}</strong></div>
       <div class="row"><span class="lbl">Sudah dibayar</span><span class="dots"></span><strong class="val">${rp(paid)}</strong></div>
       <div class="row"><span class="lbl"><b>Sisa tagihan</b></span><span class="dots"></span><strong class="val" style="${sisa > 0 ? "color:var(--danger)" : "color:var(--green)"}">${rp(sisa)}</strong></div>
       ${(o.payments || []).map(p => `<div class="row" style="font-size:12px"><span class="lbl">${new Date(p.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span><span class="dots"></span><span class="val">${rp(p.amt)}</span></div>`).join("")}
       <div class="pay-add">
-        <div class="form-group" style="margin:0;flex:1"><input type="number" id="odPayAmt" placeholder="Nominal (Rp)"></div>
+        <div class="form-group" style="margin:0;flex:1"><input type="text" inputmode="numeric" id="odPayAmt" placeholder="Nominal (Rp)" oninput="fmtNum(this)"></div>
         <button class="btn-ghost" onclick="posAddPayment()">Catat bayar</button>
       </div>
     </div>
     <div class="card">
       <button class="btn-ghost" onclick="posShareNota()">Kirim nota<small>WA / salin teks</small></button>
       <button class="btn-ghost" onclick="posShareNotaPdf()">Nota PDF<small>file untuk klien</small></button>
-      <div class="pay-add">
-        <div class="form-group" style="margin:0;flex:1"><select id="odResiW" onchange="thermalSetWidth(this.value)">
-          <option value="58"${thermalWidth() === 58 ? " selected" : ""}>Kertas 58 mm</option>
-          <option value="80"${thermalWidth() === 80 ? " selected" : ""}>Kertas 80 mm</option>
-        </select></div>
+      <div class="btn-row">
         <button class="btn-ghost" onclick="posPrintResi()">Resi order</button>
         <button class="btn-ghost" onclick="posPrintResiKirim()">Resi kirim</button>
       </div>
-      <button class="btn-ghost" onclick="posRepeat(${o.id})">Repeat order<small>hitung ulang harga sekarang</small></button>
+      <button class="btn-ghost" style="margin-top:10px" onclick="posRepeat(${o.id})">Repeat order<small>hitung ulang harga sekarang</small></button>
       <button class="btn-ghost btn-danger" onclick="posDelOrder()">Hapus order</button>
     </div>`;
   navScreen("odetail");
@@ -2131,7 +2171,7 @@ window.posSetStatus = async function (val) {
 window.posAddPayment = async function () {
   const o = POS.orders.find(x => x.id === curOrderId);
   if (!o || !dbGuard()) return;
-  const amt = parseInt(byId("odPayAmt").value);
+  const amt = pInt(byId("odPayAmt").value);
   if (!amt || amt <= 0) { showToast("⚠️ Isi nominal pembayaran", "err"); return; }
   if (paidSum(o) + amt > o.price) {
     const ok = await askConfirm(`Pembayaran ini melebihi total harga (${rp(o.price)}). Tetap catat?`, "Ya, catat");
@@ -2178,7 +2218,7 @@ Klien: ${c ? c.name : "-"}${c && c.phone ? "\nTelp: " + c.phone : ""}
 --------------------------------
 ${itemTxt}
 --------------------------------
-Harga total: ${rp(o.price)}
+${o.ongkir ? `Produk: ${rp(ordProduk(o))}\nOngkir: ${rp(o.ongkir)}\nTotal tagihan: ${rp(o.price)}` : `Harga total: ${rp(o.price)}`}
 Dibayar: ${rp(paid)}
 Sisa: ${rp(sisa)}${o.deadline ? "\nEstimasi selesai: " + fmtDate(o.deadline) : ""}
 Status: ${STATUS_LBL[o.status]}`;
@@ -2250,7 +2290,7 @@ function snapshotItem() {
       pW: lastCalc.pW, pH: lastCalc.pH, colors: lastCalc.colorCount,
       gripper: byId("useGripper").checked, qty: lastCalc.qty,
       paperByClient: !!lastCalc.paperByClient,
-      baseProfit: parseInt(byId("baseProfit").value) || 0,
+      baseProfit: pInt(byId("baseProfit").value) || 0,
       markup: parseFloat(byId("markup").value) || 0
     },
     price: Math.round(lastCalc.totalOffer)
@@ -2275,6 +2315,25 @@ function updateCartIndicator() {
   }
   if (btn) btn.innerHTML = CART.length ? `&#10003; Buat order (${CART.length} item)` : "&#10003; Klien ACC &mdash; jadikan order";
 }
+// Kirim penawaran ke klien: bila ADA draft multi-item (CART), list SEMUA item —
+// bukan hanya item terakhir (lastCalc). Draft kosong → penawaran 1 item asli (blok 1).
+const _shareClientSingle = window.shareClient;
+window.shareClient = function () {
+  if (!CART.length) { _shareClientSingle(); return; }
+  const lines = CART.map((it, i) => {
+    const cc = it.calc;
+    return `${i + 1}. Cetak ${cc.pW} × ${cc.pH} cm, ${cc.colorCount} warna — ${String(cc.paper).split(" (")[0]}${cc.paperByClient ? " (kertas klien)" : ""}, ${Number(cc.qty).toLocaleString("id-ID")} pcs — ${rp(it.price)}`;
+  }).join("\n");
+  const total = CART.reduce((s, it) => s + it.price, 0);
+  const adaKertasKlien = CART.some(it => it.calc.paperByClient);
+  shareText(`🧾 *PENAWARAN HARGA*
+━━━━━━━━━━━━━━
+${lines}
+━━━━━━━━━━━━━━
+*Total: ${rp(total)}*
+
+${adaKertasKlien ? "Harga termasuk cetak & potong; sebagian item kertas disediakan klien." : "Harga sudah termasuk bahan, cetak & potong."}`);
+};
 // Catatan stok satu item (dipakai untuk order 1 item — detail; & ringkas untuk multi).
 function itemStockNote(inp, calc, compact) {
   const pName = inp.paper || "";
@@ -2288,6 +2347,11 @@ function itemStockNote(inp, calc, compact) {
 }
 
 // ---- order baru (ACC) ----
+window.noBillInfo = function () {
+  const produk = pInt(byId("noPrice").value) || 0;
+  const ongkir = pInt(byId("noOngkir").value) || 0;
+  byId("noTotal").value = rp(produk + ongkir);
+};
 window.openNewOrder = function () {
   ORDER_ITEMS = CART.length ? CART.slice() : (lastCalc ? [snapshotItem()] : []);
   if (!ORDER_ITEMS.length) { showToast("⚠️ Hitung kalkulasi dulu", "err"); return; }
@@ -2300,8 +2364,9 @@ window.openNewOrder = function () {
   sel.innerHTML = `<option value="">— Klien baru —</option>` +
     [...POS.clients].sort((a, b) => a.name.localeCompare(b.name, "id"))
       .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
-  ["noName", "noPhone", "noAddr", "noDesign", "noDeadline", "noDP"].forEach(id => { byId(id).value = ""; });
-  byId("noPrice").value = total;
+  ["noName", "noPhone", "noAddr", "noDesign", "noDeadline", "noDP", "noOngkir"].forEach(id => { byId(id).value = ""; });
+  byId("noPrice").value = grp(total);
+  noBillInfo();
   byId("noStockInfo").innerHTML = multi
     ? ORDER_ITEMS.map((it, i) => `<div style="margin-bottom:6px"><span class="set-hint" style="font-weight:700">Item ${i + 1}</span>${itemStockNote(it.inputs, it.calc, true)}</div>`).join("")
     : itemStockNote(ORDER_ITEMS[0].inputs, ORDER_ITEMS[0].calc, false);
@@ -2326,12 +2391,15 @@ window.saveNewOrder = async function () {
   clearErr("noName"); clearErr("noPrice"); clearErr("noDP");
   const selVal = byId("noClientSel").value;
   const name = byId("noName").value.trim();
-  const price = parseInt(byId("noPrice").value);
-  const dp = parseInt(byId("noDP").value) || 0;
+  const produk = pInt(byId("noPrice").value);
+  const ongkir = pInt(byId("noOngkir").value) || 0;
+  const price = (produk || 0) + ongkir;   // total tagihan = produk + ongkir
+  const dp = pInt(byId("noDP").value) || 0;
   let bad = false;
   if (!selVal && !name) { markErr("noName", "Isi nama klien"); bad = true; }
-  if (!price || price <= 0) { markErr("noPrice", "Isi harga total"); bad = true; }
-  if (dp < 0 || (price > 0 && dp > price)) { markErr("noDP", "DP melebihi harga total"); bad = true; }
+  if (!produk || produk <= 0) { markErr("noPrice", "Isi harga produk"); bad = true; }
+  if (ongkir < 0) { markErr("noOngkir", "Ongkir tak boleh minus"); bad = true; }
+  if (dp < 0 || (price > 0 && dp > price)) { markErr("noDP", "DP melebihi total tagihan"); bad = true; }
   if (bad) return;
 
   let clientId;
@@ -2350,6 +2418,7 @@ window.saveNewOrder = async function () {
     status: "order",
     payments: dp > 0 ? [{ amt: dp, ts: Date.now() }] : [],
     price,
+    ongkir,
     designNote: byId("noDesign").value.trim(),
     prev: REPEAT ? { no: REPEAT.prevNo, price: REPEAT.prevPrice } : null,
     items,
@@ -2364,10 +2433,20 @@ window.saveNewOrder = async function () {
   }
   CART = []; updateCartIndicator();
   REPEAT = null; byId("repeatBanner").hidden = true;
+  resetCalcView();   // kalkulator kembali bersih untuk order berikutnya (bukan sisa hitungan lama)
   showToast("✔️ Order " + o.no + " tersimpan");
   maybeBackupNudge();
   posOpenOrder(o.id);
 };
+// Bersihkan tampilan hasil kalkulasi setelah order tersimpan, supaya order baru
+// tidak diawali sisa hitungan sebelumnya (perlu hitung ulang untuk penawaran baru).
+function resetCalcView() {
+  lastCalc = null; lastAlts = null;
+  const res = byId("results"); if (res) { res.style.display = "none"; res.classList.remove("show"); }
+  const ph = byId("resPlaceholder"); if (ph) ph.style.display = "";
+  const cc = byId("compareCard"); if (cc) cc.style.display = "none";
+  const pbc = byId("pbcNote"); if (pbc) pbc.hidden = true;
+}
 
 // ---- repeat order ----
 // Isi form kalkulator dari inputs 1 item; balikan false bila mesin/kertas hilang.
@@ -2381,7 +2460,7 @@ function applyItemToForm(inp) {
   byId("useGripper").checked = inp.gripper !== false;
   byId("paperByClient").checked = !!inp.paperByClient;
   byId("qty").value = inp.qty; byId("qtyAlt").value = "";
-  if (inp.baseProfit) byId("baseProfit").value = inp.baseProfit;
+  if (inp.baseProfit) byId("baseProfit").value = grp(inp.baseProfit);
   if (inp.markup || inp.markup === 0) byId("markup").value = inp.markup;
   if (typeof updateData === "function") updateData();
   return mi >= 0 && pi >= 0;
@@ -2389,6 +2468,7 @@ function applyItemToForm(inp) {
 window.posRepeat = function (id) {
   const o = POS.orders.find(x => x.id === id);
   if (!o) return;
+  showToast("↻ Membuka repeat order…");
   if (o.calc.partner) {
     // Order partner tidak lewat kalkulator — buka form partner terprefill
     openPartnerOrder({
@@ -2403,7 +2483,10 @@ window.posRepeat = function (id) {
   REPEAT = { clientId: o.clientId, prevNo: o.no, prevPrice: o.price };
   const rb = byId("repeatBanner");
   if (items.length > 1) {
-    // Multi-item: susun ulang semua item ke draft, dihitung dgn tarif sekarang
+    // Multi-item: susun ulang semua item ke draft, dihitung dgn tarif sekarang.
+    // navScreen KE KALKULATOR dulu (sama seperti jalur 1 item) — kalau tidak,
+    // di workbench desktop layar tetap di detail order (seolah tak terjadi apa2).
+    navScreen("form");
     CART = [];
     let allFound = true;
     items.forEach(it => { if (!applyItemToForm(it.inputs)) allFound = false; calculate(); CART.push(snapshotItem()); });
@@ -2426,14 +2509,14 @@ window.posRepeat = function (id) {
 // ---- order partner v31 (makloon: partner beri harga jadi, kita markup) ----
 let PREPEAT = null; // { prevNo, prevPrice } utk banner repeat order partner
 window.poRecalc = function () {
-  const cost = parseInt(byId("poCost").value) || 0;
+  const cost = pInt(byId("poCost").value) || 0;
   const m = parseFloat(byId("poMarkup").value) || 0;
-  if (cost > 0) byId("poPrice").value = Math.round(cost * (1 + m / 100));
+  if (cost > 0) byId("poPrice").value = grp(Math.round(cost * (1 + m / 100)));
   poInfo();
 };
 window.poInfo = function () {
-  const cost = parseInt(byId("poCost").value) || 0;
-  const price = parseInt(byId("poPrice").value) || 0;
+  const cost = pInt(byId("poCost").value) || 0;
+  const price = pInt(byId("poPrice").value) || 0;
   const qty = parseInt(byId("poQty").value) || 0;
   const brk = byId("poBreak");
   const ready = cost > 0 && price > 0;
@@ -2449,22 +2532,23 @@ window.poInfo = function () {
   } else {
     brk.hidden = true; brk.innerHTML = "";
   }
+  const ongkir = pInt(byId("poOngkir").value) || 0;
   byId("poProfit").innerText = ready
-    ? `Profit: ${rp(price - cost)} (modal ${rp(cost)} → jual ${rp(price)})` : "";
+    ? `Profit: ${rp(price - cost)} (modal ${rp(cost)} → jual ${rp(price)})${ongkir > 0 ? ` · Total tagihan (+ongkir): ${rp(price + ongkir)}` : ""}` : "";
 };
 window.openPartnerOrder = function (pre) {
   const sel = byId("poClientSel");
   sel.innerHTML = `<option value="">— Klien baru —</option>` +
     [...POS.clients].sort((a, b) => a.name.localeCompare(b.name, "id"))
       .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
-  ["poName", "poPhone", "poAddr", "poDesc", "poQty", "poPartner", "poCost", "poPrice", "poDP", "poDeadline"].forEach(id => { byId(id).value = ""; });
+  ["poName", "poPhone", "poAddr", "poDesc", "poQty", "poPartner", "poCost", "poPrice", "poOngkir", "poDP", "poDeadline"].forEach(id => { byId(id).value = ""; });
   const ob = byId("poOldPrice");
   if (pre) {
     sel.value = String(pre.clientId || "");
     byId("poDesc").value = pre.desc || "";
     byId("poQty").value = pre.qty || "";
     byId("poPartner").value = pre.partnerName || "";
-    byId("poCost").value = pre.cost || "";
+    byId("poCost").value = grp(pre.cost || "");
     if (pre.markup || pre.markup === 0) byId("poMarkup").value = pre.markup;
     poRecalc();
     PREPEAT = { prevNo: pre.prevNo, prevPrice: pre.prevPrice };
@@ -2478,7 +2562,7 @@ window.openPartnerOrder = function (pre) {
 // usaha (keputusan v25) dan TANPA modal partner.
 window.poSharePenawaran = function () {
   const desc = byId("poDesc").value.trim();
-  const price = parseInt(byId("poPrice").value) || 0;
+  const price = pInt(byId("poPrice").value) || 0;
   const qty = parseInt(byId("poQty").value) || 0;
   if (!desc || price <= 0) { showToast("⚠️ Isi deskripsi pekerjaan & harga jual dulu", "err"); return; }
   shareText(`🧾 *PENAWARAN HARGA*
@@ -2500,15 +2584,18 @@ window.savePartnerOrder = async function () {
   const selVal = byId("poClientSel").value;
   const name = byId("poName").value.trim();
   const desc = byId("poDesc").value.trim();
-  const cost = parseInt(byId("poCost").value);
-  const price = parseInt(byId("poPrice").value);
-  const dp = parseInt(byId("poDP").value) || 0;
+  const cost = pInt(byId("poCost").value);
+  const jual = pInt(byId("poPrice").value);
+  const ongkir = pInt(byId("poOngkir").value) || 0;
+  const price = (jual || 0) + ongkir;   // total tagihan = jual + ongkir
+  const dp = pInt(byId("poDP").value) || 0;
   let bad = false;
   if (!selVal && !name) { markErr("poName", "Isi nama klien"); bad = true; }
   if (!desc) { markErr("poDesc", "Isi deskripsi pekerjaan"); bad = true; }
   if (!cost || cost <= 0) { markErr("poCost", "Isi harga modal dari partner"); bad = true; }
-  if (!price || price <= 0) { markErr("poPrice", "Isi harga jual"); bad = true; }
-  if (dp < 0 || (price > 0 && dp > price)) { markErr("poDP", "DP melebihi harga jual"); bad = true; }
+  if (!jual || jual <= 0) { markErr("poPrice", "Isi harga jual"); bad = true; }
+  if (ongkir < 0) { markErr("poOngkir", "Ongkir tak boleh minus"); bad = true; }
+  if (dp < 0 || (price > 0 && dp > price)) { markErr("poDP", "DP melebihi total tagihan"); bad = true; }
   if (bad) return;
   let clientId;
   if (selVal) clientId = parseInt(selVal);
@@ -2526,10 +2613,11 @@ window.savePartnerOrder = async function () {
     status: "order",
     payments: dp > 0 ? [{ amt: dp, ts: Date.now() }] : [],
     price,
+    ongkir,
     designNote: "",
     prev: PREPEAT ? { no: PREPEAT.prevNo, price: PREPEAT.prevPrice } : null,
     partner: { name: byId("poPartner").value.trim(), cost },
-    calc: { partner: true, desc, qty, hppTotal: cost, hppPerUnit: qty > 0 ? cost / qty : 0, totalOffer: price },
+    calc: { partner: true, desc, qty, hppTotal: cost, hppPerUnit: qty > 0 ? cost / qty : 0, totalOffer: jual },
     inputs: { partner: true, desc, qty, cost, markup: parseFloat(byId("poMarkup").value) || 0 }
   };
   o.id = await idbPut("orders", o);
@@ -2674,7 +2762,7 @@ function periodAgg(year, month) {
   const a = { cnt: 0, omzet: 0, hpp: 0, kas: 0, expOper: 0, expBahan: 0 };
   POS.orders.forEach(o => {
     const d = new Date(o.createdAt);
-    if (inP(d.getFullYear(), d.getMonth())) { a.cnt++; a.omzet += o.price || 0; a.hpp += orderHpp(o); }
+    if (inP(d.getFullYear(), d.getMonth())) { a.cnt++; a.omzet += ordProduk(o); a.hpp += orderHpp(o); }
     (o.payments || []).forEach(p => { const t = new Date(p.ts); if (inP(t.getFullYear(), t.getMonth())) a.kas += p.amt || 0; });
   });
   POS.expenses.forEach(e => {
@@ -2691,7 +2779,7 @@ const isoDay = ts => { const t = new Date(ts); return t.getFullYear() + "-" + St
 function dayAgg(iso) {
   const a = { cnt: 0, omzet: 0, masuk: 0, keluar: 0 };
   POS.orders.forEach(o => {
-    if (isoDay(o.createdAt) === iso) { a.cnt++; a.omzet += o.price || 0; }
+    if (isoDay(o.createdAt) === iso) { a.cnt++; a.omzet += ordProduk(o); }
     (o.payments || []).forEach(p => { if (isoDay(p.ts) === iso) a.masuk += p.amt || 0; });
   });
   POS.expenses.forEach(e => { if (e.date === iso) a.keluar += e.amt || 0; });
@@ -2771,7 +2859,7 @@ window.expSave = async function () {
   if (!dbGuard()) return;
   const date = byId("expDate").value || todayIso();
   const cat = byId("expCat").value.trim();
-  const amt = parseInt(byId("expAmt").value);
+  const amt = pInt(byId("expAmt").value);
   if (!cat) { showToast("⚠️ Isi kategori / jenis pengeluaran", "err"); return; }
   if (!amt || amt <= 0) { showToast("⚠️ Isi nominal pengeluaran", "err"); return; }
   const e = { date, cat, amt, note: byId("expNote").value.trim(), hpp: byId("expHpp").checked, ts: Date.now() };
@@ -2806,6 +2894,7 @@ function resiHtml(o) {
   const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
   const lunas = o.price > 0 && paid >= o.price;
   const tgl = ts => new Date(ts).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  const tglS = ts => { const x = new Date(ts); return String(x.getDate()).padStart(2, "0") + "/" + String(x.getMonth() + 1).padStart(2, "0") + "/" + String(x.getFullYear()).slice(2); };
   const row = (l, v, cls) => `<div class="r-row${cls ? " " + cls : ""}"><span>${l}</span><span>${v}</span></div>`;
   return `
     ${b.name ? `<div class="r-c r-big">${esc(b.name)}</div>` : ""}
@@ -2820,16 +2909,18 @@ function resiHtml(o) {
     <div>${esc(o.calc.desc)}</div>
     ${o.calc.qty ? `<div>Jumlah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs</div>` : ""}
     ` : orderItems(o).length > 1 ? orderItems(o).map((it, i) => `
-    <div class="r-b">${i + 1}. Cetak ${it.calc.pW}x${it.calc.pH} cm, ${it.calc.colorCount} warna</div>
-    <div>${esc(String(it.calc.paper).split(" (")[0])}${it.calc.paperByClient ? " (dari klien)" : ""} · ${Number(it.calc.qty).toLocaleString("id-ID")} pcs · ${rp(it.price)}</div>`).join("") : `
+    <div class="r-b" style="margin-top:4px">${i + 1}. ${it.calc.pW}x${it.calc.pH} cm, ${it.calc.colorCount} warna</div>
+    <div>${esc(String(it.calc.paper).split(" (")[0])}${it.calc.paperByClient ? " (dari klien)" : ""} · ${Number(it.calc.qty).toLocaleString("id-ID")} pcs</div>
+    ${row("Subtotal", rp(it.price))}`).join("") : `
     <div>Cetak ${o.calc.pW}x${o.calc.pH} cm, ${o.calc.colorCount} warna</div>
     <div>Bahan: ${esc(String(o.calc.paper).split(" (")[0])}${o.calc.paperByClient ? " (dari klien)" : ""}</div>
     <div>Oplah: ${Number(o.calc.qty).toLocaleString("id-ID")} pcs</div>
     `}
     ${o.deadline ? `<div>Estimasi selesai: ${fmtDate(o.deadline)}</div>` : ""}
     <div class="r-hr"></div>
+    ${o.ongkir ? row("Produk", rp(ordProduk(o))) + row("Ongkir", rp(o.ongkir)) : ""}
     ${row("TOTAL", rp(o.price), "r-b")}
-    ${(o.payments || []).map(p => row("Bayar " + tgl(p.ts), rp(p.amt))).join("")}
+    ${(o.payments || []).length ? `<div class="r-b" style="margin-top:3px">Pembayaran</div>` + (o.payments || []).map(p => row(tglS(p.ts), rp(p.amt))).join("") : ""}
     ${row("Dibayar", rp(paid))}
     ${row("SISA", sisa > 0 ? rp(sisa) : "Rp 0", "r-b")}
     ${lunas ? `<div class="r-lunas">LUNAS</div>` : ""}
@@ -2891,6 +2982,7 @@ function bizLoadForm() {
   byId("bizName").value = b.name || "";
   byId("bizAddr").value = b.address || "";
   byId("bizPhone").value = b.phone || "";
+  byId("setResiW").value = String(thermalWidth());
   logoPreview();
 }
 window.bizSave = async function () {
@@ -2994,6 +3086,25 @@ function pdfW(t, size) {
   for (const ch of String(t)) w += (HELV_W[ch] || 556);
   return w * size / 1000;
 }
+// Bungkus teks (alamat/deskripsi panjang) ke beberapa baris yang muat maxW pt.
+// Pecah per kata; kata yang lebih panjang dari satu baris dipotong per karakter.
+function pdfWrap(t, maxW, size) {
+  const words = pdfSan(t).split(/\s+/).filter(Boolean);
+  const lines = []; let cur = "";
+  for (let w of words) {
+    while (pdfW(w, size) > maxW && w.length > 1) {
+      let i = w.length;
+      while (i > 1 && pdfW(w.slice(0, i), size) > maxW) i--;
+      if (cur) { lines.push(cur); cur = ""; }
+      lines.push(w.slice(0, i)); w = w.slice(i);
+    }
+    const cand = cur ? cur + " " + w : w;
+    if (pdfW(cand, size) <= maxW) cur = cand;
+    else { if (cur) lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [""];
+}
 function b64ToBytes(b64) {
   const bin = atob(b64);
   const u = new Uint8Array(bin.length);
@@ -3044,7 +3155,7 @@ function notaPdfBlob(o) {
   }
   txt(idX, PH - 46, biz.name || "Nota Penjualan", { bold: true, size: 12 });
   let iy = PH - 58;
-  if (biz.address) { txt(idX, iy, biz.address, { size: 7.5, col: GREY }); iy -= 9.5; }
+  if (biz.address) { pdfWrap(biz.address, Math.min(MR - idX, 200), 7.5).slice(0, 2).forEach(ln => { txt(idX, iy, ln, { size: 7.5, col: GREY }); iy -= 9.5; }); }
   if (biz.phone)   { txt(idX, iy, "Telp/WA " + biz.phone, { size: 7.5, col: GREY }); }
   txt(MR, PH - 40, "NOTA ORDER", { bold: true, size: 9.5, col: BRAND, right: true });
   txt(MR, PH - 53, o.no, { bold: true, size: 12.5, right: true });
@@ -3056,15 +3167,25 @@ function notaPdfBlob(o) {
   txt(ML, y, "KLIEN", { bold: true, size: 7.5, col: GREY }); y -= 14;
   txt(ML, y, c ? c.name : "-", { bold: true, size: 11.5 }); y -= 12;
   if (c && c.phone)   { txt(ML, y, c.phone,   { size: 9, col: GREY }); y -= 11; }
-  if (c && c.address) { txt(ML, y, c.address, { size: 9, col: GREY }); y -= 11; }
+  if (c && c.address) { pdfWrap(c.address, MR - ML, 9).forEach(ln => { txt(ML, y, ln, { size: 9, col: GREY }); y -= 11; }); }
   y -= 6; line(ML, y, MR, y); y -= 18;
 
   // pekerjaan
   txt(ML, y, "PEKERJAAN", { bold: true, size: 7.5, col: GREY }); y -= 15;
   const row = (l, v, opt) => {
-    txt(ML, y, l, { size: 9, col: GREY });
-    txt(MR, y, v, Object.assign({ size: 9, right: true }, opt || {}));
-    y -= 13;
+    opt = opt || {};
+    const sz = opt.size || 9;
+    const avail = MR - ML - pdfW(pdfSan(l), 9) - 10;
+    if (pdfW(pdfSan(v), sz) <= avail) {
+      txt(ML, y, l, { size: 9, col: GREY });
+      txt(MR, y, v, Object.assign({ size: sz, right: true }, opt));
+      y -= 13;
+    } else {
+      // nilai panjang (mis. alamat/desain/deskripsi): label sebaris, nilai membungkus rata kiri di bawahnya
+      txt(ML, y, l, { size: 9, col: GREY }); y -= 12;
+      pdfWrap(v, MR - ML - 12, sz).forEach(ln => { txt(ML + 12, y, ln, Object.assign({ size: sz }, opt, { right: false })); y -= 11.5; });
+      y -= 1.5;
+    }
   };
   if (o.calc.partner) {
     row("Item", o.calc.desc);
@@ -3089,7 +3210,8 @@ function notaPdfBlob(o) {
 
   // pembayaran
   txt(ML, y, "PEMBAYARAN", { bold: true, size: 7.5, col: GREY }); y -= 15;
-  row("Harga total", rp(o.price), { bold: true });
+  if (o.ongkir) { row("Produk", rp(ordProduk(o))); row("Ongkir", rp(o.ongkir)); }
+  row(o.ongkir ? "Total tagihan" : "Harga total", rp(o.price), { bold: true });
   (o.payments || []).forEach(p => {
     row("Bayar " + new Date(p.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }), rp(p.amt));
   });
@@ -3159,7 +3281,7 @@ function notaPdfBlob(o) {
   };
   if (logo) objs.push(imgObj(logo));
   if (sign) objs.push(imgObj(sign));
-  if (logo) objs.push(["<< /Type /ExtGState /ca 0.05 /CA 0.05 >>"]);
+  if (logo) objs.push(["<< /Type /ExtGState /ca 0.07 /CA 0.07 >>"]);
   if (lunas) objs.push(["<< /Type /ExtGState /ca 0.72 /CA 0.72 >>"]);
   const chunks = [];
   let pos = 0;

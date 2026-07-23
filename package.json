@@ -4,7 +4,7 @@
   "private": true,
   "description": "PrintCalc Pro - POS + kalkulator cetak offset Dahlia Pack (single-file HTML)",
   "scripts": {
-    "test": "node tests/test_pos.js && node tests/test_stock.js && node tests/test_keuangan.js && node tests/test_resi.js && node tests/test_v31.js && node tests/test_backup.js && node tests/test_multi.js"
+    "test": "node tests/test_pos.js && node tests/test_stock.js && node tests/test_keuangan.js && node tests/test_resi.js && node tests/test_v31.js && node tests/test_backup.js && node tests/test_multi.js && node tests/test_ongkir.js"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.0.0",

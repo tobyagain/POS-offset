@@ -10,6 +10,7 @@ function ok(cond, msg) {
   else { fail++; console.error("  ✗ FAIL: " + msg); }
 }
 const tick = (ms = 30) => new Promise(r => setTimeout(r, ms));
+const num = s => parseInt(String(s).replace(/[^\d]/g, "") || "0");
 const rpID = n => "Rp " + Math.round(n).toLocaleString("id-ID");
 
 function boot({ width = 390, idb } = {}) {
@@ -60,12 +61,13 @@ function boot({ width = 390, idb } = {}) {
   d.getElementById("noPhone").value = "081234000";
   d.getElementById("noAddr").value = "Jl. Mawar No. 1, Blitar";
   d.getElementById("noDP").value = "100000";
-  const price = parseInt(d.getElementById("noPrice").value);
+  const price = num(d.getElementById("noPrice").value);
   await w.saveNewOrder(); await tick();
   const orderNo = d.getElementById("odTitle").innerText;
 
-  // Kontrol resi di detail order
-  ok(!!d.getElementById("odResiW") && d.getElementById("odResiW").value === "58", "pilihan lebar kertas tampil, default 58 mm");
+  // Pilihan lebar kertas resi kini di Pengaturan (bukan per-cetak), default 58 mm
+  ok(!d.getElementById("odResiW"), "pilihan kertas per-cetak dihapus dari detail order");
+  ok(!!d.getElementById("setResiW") && d.getElementById("setResiW").value === "58", "pilihan lebar kertas ada di Pengaturan, default 58 mm");
 
   // Cetak resi 58 mm
   w.posPrintResi();
@@ -75,6 +77,8 @@ function boot({ width = 390, idb } = {}) {
   ok(resi.textContent.includes(orderNo) && resi.textContent.includes("Toko Resi"), "resi memuat nomor order + nama klien");
   ok(resi.textContent.includes("TOTAL") && resi.textContent.includes(rpID(price)), "resi memuat harga total");
   ok(resi.textContent.includes("SISA") && resi.textContent.includes(rpID(price - 100000)), "resi memuat sisa tagihan setelah DP");
+  // Pembayaran di resi: header + tanggal ringkas dd/mm/yy (bukan "Bayar 23 Jul 2026" yang membungkus)
+  ok(resi.textContent.includes("Pembayaran") && /\d{2}\/\d{2}\/\d{2}/.test(resi.textContent) && !resi.textContent.includes("Bayar 2"), "resi: pembayaran pakai header + tanggal ringkas, tak membungkus");
   ok(!resi.innerHTML.includes("r-lunas"), "belum lunas: blok LUNAS tidak tampil");
   ok(d.getElementById("resiPageStyle").textContent.includes("size: 48mm"), "@page = area cetak 48 mm untuk kertas 58");
   ok(!resi.className.includes("w80"), "kertas 58: tanpa kelas w80");
@@ -87,8 +91,11 @@ function boot({ width = 390, idb } = {}) {
   ok(d.getElementById("resiPageStyle").textContent.includes("size: 72mm") && resi.className.includes("w80"), "ganti kertas 80: @page = area cetak 72 mm + kelas w80");
   w.dispatchEvent(new w.Event("afterprint"));
 
-  // Lunas -> blok LUNAS tampil di resi
-  d.getElementById("odPayAmt").value = String(price - 100000);
+  // Input nominal bayar berpemisah ribuan (v41)
+  const paEl = d.getElementById("odPayAmt"); paEl.value = "900000"; w.fmtNum(paEl);
+  ok(paEl.value === "900.000", "input nominal bayar diformat berpemisah ribuan");
+  // Lunas -> blok LUNAS tampil di resi (nominal terformat dgn titik tetap terbaca via pInt)
+  d.getElementById("odPayAmt").value = (price - 100000).toLocaleString("id-ID");
   const payP = w.posAddPayment(); await tick(); await payP; await tick();
   w.posPrintResi();
   ok(resi.innerHTML.includes("r-lunas") && resi.textContent.includes("LUNAS"), "order lunas: blok LUNAS tampil di resi");
@@ -142,7 +149,7 @@ function boot({ width = 390, idb } = {}) {
   for (let i = 0; i < 30 && !w2.document.querySelector("#orderList .ocard"); i++) { await tick(50); w2.navGo("orders"); } // tunggu IDB termuat
   w2.document.querySelector("#orderList .ocard").click();
   await tick();
-  ok(w2.document.getElementById("odResiW").value === "80", "pilihan lebar 80 mm bertahan setelah reload");
+  ok(w2.document.getElementById("setResiW").value === "80", "pilihan lebar 80 mm bertahan setelah reload (di Pengaturan)");
 
   console.log(`\n=== ${pass} passed, ${fail} failed ===`);
   process.exit(fail ? 1 : 0);

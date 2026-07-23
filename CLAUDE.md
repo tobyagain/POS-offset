@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (226 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (246 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi.
@@ -80,6 +80,15 @@ Catatan scope: `let`/`const` top-level di blok 1-2 (mis. `lastCalc`, `SET`, `rp`
   Kas masuk (pembayaran) tetap uang riil (termasuk bagian ongkir). Form: "Harga
   produk" + "Ongkir" → "Total tagihan". Order partner: `calc.totalOffer` = jual
   (tanpa ongkir); profit partner pakai `ordProduk`.
+- **Diskon (v42)**: `o.disc` = potongan harga produk (Rp nominal) yang dikurangkan
+  SEBELUM masuk `o.price` → `o.price = (produk − diskon) + ongkir`. Karena diskon
+  sudah terpotong di `o.price`, `ordProduk(o)` otomatis = produk NETTO, sehingga
+  **omzet & profit ikut berkurang** tanpa jalur khusus (beda dari ongkir yang
+  netral). `ordBruto(o) = ordProduk(o) + o.disc` = harga produk sebelum diskon,
+  dipakai HANYA untuk tampilan rincian (detail/nota WA/nota PDF/resi menampilkan
+  Produk → Diskon → Ongkir → Total tagihan). Order lama tanpa `o.disc` → 0. Diskon
+  tidak boleh minus & tidak boleh melebihi harga produk (validasi di `saveNewOrder`).
+  Order partner TIDAK punya diskon (harga jual disetel langsung).
 - **Repeat order** = hitung ulang dengan tarif sekarang + tampilkan harga lama
   sebagai pembanding (keputusan produk, bukan bug).
 - **Stok** terikat NAMA kertas; boleh minus (= order jalan, kertas belum dibeli);
@@ -165,5 +174,7 @@ resi) → v40 ongkir (ditagihkan ke klien, di luar omzet/profit) + lebar kertas
 resi pindah ke Pengaturan + format resi multi-item dirapikan (subtotal per item)
 → v41 input uang berpemisah ribuan (field uang = text+inputmode numeric, format
 live via `fmtNum`, baca balik via `pInt`, tulis via `grp`) + tombol resi
-order/kirim dirapikan (equal-width `btn-row`).
+order/kirim dirapikan (equal-width `btn-row`) → v42 diskon order (potongan Rp
+di form order; mengurangi omzet & profit; tampil di detail/nota/resi) + menu
+Pengaturan jadi accordion (`<details class="set-acc">` per bagian; kurangi scroll).
 Detail keputusan: `docs/KEPUTUSAN.md`.

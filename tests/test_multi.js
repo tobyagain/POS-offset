@@ -29,6 +29,7 @@ function boot({ idb, width = 390 } = {}) {
       w.HTMLAnchorElement.prototype.click = function () { w.__downloaded = this.download; };
       w.scrollTo = noop; w.HTMLElement.prototype.scrollIntoView = noop;
       w.print = () => { w.__printed = (w.__printed || 0) + 1; };
+      w.navigator.clipboard = { writeText: t => { w.__shared = t; return Promise.resolve(); } };
       w.TextEncoder = TextEncoder;
       if (!w.Blob.prototype.text) w.Blob.prototype.text = function () {
         return new Promise((res, rej) => { const fr = new w.FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => rej(fr.error); fr.readAsText(this); });
@@ -70,6 +71,12 @@ function calcItem(w, { paper = 0, pW, pH, qty }) {
   w.cartAdd();
   ok(d.getElementById("cartInd").textContent.includes("2 item"), "cartAdd: indikator draft '2 item'");
   ok(d.getElementById("btnMakeOrder").textContent.includes("Buat order (2 item)"), "tombol berubah jadi 'Buat order (2 item)'");
+
+  // Kirim penawaran dgn draft multi-item: KEDUA item harus terlist (bukan cuma lastCalc)
+  w.__shared = "";
+  w.shareClient();
+  ok(w.__shared.includes("PENAWARAN") && /1\. Cetak/.test(w.__shared) && /2\. Cetak/.test(w.__shared), "kirim penawaran draft multi: kedua item terlist di WA");
+  ok(w.__shared.includes("Total") && !/HPP|modal/i.test(w.__shared), "penawaran multi: ada Total, tanpa HPP/modal (aman untuk klien)");
 
   // Finalisasi
   w.openNewOrder();

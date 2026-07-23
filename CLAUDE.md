@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (224 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (226 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi.

@@ -2315,6 +2315,25 @@ function updateCartIndicator() {
   }
   if (btn) btn.innerHTML = CART.length ? `&#10003; Buat order (${CART.length} item)` : "&#10003; Klien ACC &mdash; jadikan order";
 }
+// Kirim penawaran ke klien: bila ADA draft multi-item (CART), list SEMUA item —
+// bukan hanya item terakhir (lastCalc). Draft kosong → penawaran 1 item asli (blok 1).
+const _shareClientSingle = window.shareClient;
+window.shareClient = function () {
+  if (!CART.length) { _shareClientSingle(); return; }
+  const lines = CART.map((it, i) => {
+    const cc = it.calc;
+    return `${i + 1}. Cetak ${cc.pW} × ${cc.pH} cm, ${cc.colorCount} warna — ${String(cc.paper).split(" (")[0]}${cc.paperByClient ? " (kertas klien)" : ""}, ${Number(cc.qty).toLocaleString("id-ID")} pcs — ${rp(it.price)}`;
+  }).join("\n");
+  const total = CART.reduce((s, it) => s + it.price, 0);
+  const adaKertasKlien = CART.some(it => it.calc.paperByClient);
+  shareText(`🧾 *PENAWARAN HARGA*
+━━━━━━━━━━━━━━
+${lines}
+━━━━━━━━━━━━━━
+*Total: ${rp(total)}*
+
+${adaKertasKlien ? "Harga termasuk cetak & potong; sebagian item kertas disediakan klien." : "Harga sudah termasuk bahan, cetak & potong."}`);
+};
 // Catatan stok satu item (dipakai untuk order 1 item — detail; & ringkas untuk multi).
 function itemStockNote(inp, calc, compact) {
   const pName = inp.paper || "";

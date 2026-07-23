@@ -266,6 +266,18 @@ canvas.clickable { cursor: zoom-in; -webkit-tap-highlight-color: transparent; }
 /* ================= PENGATURAN ================= */
 #settingsCard { display: none; }
 h3.set { font-size: 12px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-3); border-bottom: 1px solid var(--border); padding-bottom: 6px; margin: 20px 0 12px; }
+/* Pengaturan bisa dilipat (v42): tiap bagian = <details class="set-acc"> agar tak banyak scroll */
+.set-acc { border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); box-shadow: var(--shadow-card); margin-bottom: 14px; overflow: hidden; }
+#settingsCard .set-acc { box-shadow: none; background: var(--surface-2); border-radius: 12px; margin: 12px 0; }
+.set-acc > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 700; color: var(--text); padding: 15px 16px; user-select: none; }
+.set-acc > summary::-webkit-details-marker { display: none; }
+.set-acc > summary::after { content: ""; margin-left: auto; width: 9px; height: 9px; border-right: 2.5px solid var(--text-3); border-bottom: 2.5px solid var(--text-3); transform: rotate(45deg); transition: transform .15s; flex: 0 0 auto; }
+.set-acc[open] > summary::after { transform: rotate(-135deg); }
+.set-acc > summary:hover { background: var(--brand-soft); }
+.set-acc[open] > summary { border-bottom: 1px solid var(--border); }
+.set-acc-body { padding: 16px; }
+.set-acc-body > h3.set:first-child { margin-top: 0; }
+.set-acc-body > .btn-ghost:last-child, .set-acc-body > button:last-child { margin-bottom: 0; }
 .paper-head, .paper-row { display: grid; grid-template-columns: 1.7fr 0.65fr 0.65fr 1fr 0.75fr 38px; gap: 6px; align-items: center; margin-bottom: 8px; }
 .paper-head span { font-size: 10.5px; font-weight: 600; color: var(--text-3); }
 .paper-row input { padding: 9px 9px; font-size: 16px; }
@@ -730,31 +742,45 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
 
     <div id="settingsCard" class="card">
       <p class="card-title t-yel">Harga &amp; parameter</p>
+      <p class="set-hint" style="margin-top:0">Ketuk tiap bagian untuk membuka.</p>
 
-      <h3 class="set">Mesin cetak</h3>
-      <div id="machineList"></div>
-      <button class="btn-ghost" onclick="addMachine()">Tambah mesin</button>
+      <details class="set-acc">
+        <summary>Mesin cetak</summary>
+        <div class="set-acc-body">
+          <div id="machineList"></div>
+          <button class="btn-ghost" style="margin-bottom:0" onclick="addMachine()">Tambah mesin</button>
+        </div>
+      </details>
 
-      <h3 class="set">Jenis kertas (plano)</h3>
-      <p class="set-hint">Gramasi (gr/m²) dipakai untuk menghitung berat hasil jadi &mdash; isi 0 jika tidak perlu.</p>
-      <div class="paper-head"><span>Nama</span><span>L cm</span><span>T cm</span><span>Harga/lbr</span><span>Gramasi</span><span></span></div>
-      <div id="paperList"></div>
-      <button class="btn-ghost" onclick="addPaper()">Tambah jenis kertas</button>
+      <details class="set-acc">
+        <summary>Jenis kertas (plano)</summary>
+        <div class="set-acc-body">
+          <p class="set-hint" style="margin-top:0">Gramasi (gr/m²) dipakai untuk menghitung berat hasil jadi &mdash; isi 0 jika tidak perlu.</p>
+          <div class="paper-head"><span>Nama</span><span>L cm</span><span>T cm</span><span>Harga/lbr</span><span>Gramasi</span><span></span></div>
+          <div id="paperList"></div>
+          <button class="btn-ghost" style="margin-bottom:0" onclick="addPaper()">Tambah jenis kertas</button>
+        </div>
+      </details>
 
-      <h3 class="set">Parameter lain</h3>
-      <div class="grid3">
-        <div class="form-group"><label>Ongkos potong (Rp)</label><input type="number" id="sCutCost"></div>
-        <div class="form-group"><label>Inshiet (pcs)</label><input type="number" id="sExtraPcs"></div>
-        <div class="form-group"><label>Gripper (cm)</label><input type="number" id="sGripper" step="0.1"></div>
-      </div>
+      <details class="set-acc">
+        <summary>Parameter lain</summary>
+        <div class="set-acc-body">
+          <div class="grid3">
+            <div class="form-group"><label>Ongkos potong (Rp)</label><input type="number" id="sCutCost"></div>
+            <div class="form-group"><label>Inshiet (pcs)</label><input type="number" id="sExtraPcs"></div>
+            <div class="form-group"><label>Gripper (cm)</label><input type="number" id="sGripper" step="0.1"></div>
+          </div>
+        </div>
+      </details>
 
-      <button class="btn-primary" onclick="saveSettings()">Simpan pengaturan</button>
+      <button class="btn-primary" style="margin-top:14px" onclick="saveSettings()">Simpan pengaturan</button>
       <button class="btn-ghost btn-danger" onclick="resetSettings()">Reset ke default</button>
     </div>
 
-    <div class="card">
-      <p class="card-title">Identitas usaha</p>
-      <p class="set-hint">Tampil di kop nota PDF dan teks nota WA sebagai identitas penjual.</p>
+    <details class="set-acc">
+      <summary>Identitas usaha</summary>
+      <div class="set-acc-body">
+      <p class="set-hint" style="margin-top:0">Tampil di kop nota PDF dan teks nota WA sebagai identitas penjual.</p>
       <div class="form-group"><label>Nama usaha</label><input type="text" id="bizName" placeholder="cth: CV Maju Cetak" onchange="bizSave()"></div>
       <div class="form-group"><label>Alamat</label><input type="text" id="bizAddr" placeholder="Alamat singkat" onchange="bizSave()"></div>
       <div class="form-group"><label>Telepon / WA</label><input type="text" id="bizPhone" inputmode="tel" placeholder="08xx" onchange="bizSave()"></div>
@@ -773,7 +799,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
           <option value="80">Kertas 80 mm</option>
         </select>
       </div>
-      <div class="form-group"><label>Tanda tangan (opsional)</label>
+      <div class="form-group" style="margin-bottom:0"><label>Tanda tangan (opsional)</label>
         <p class="set-hint" style="margin:0 0 6px">Tampil di blok "Hormat kami" nota PDF. Kosongkan jika mau ditandatangani manual.</p>
         <div class="stk-row">
           <button class="btn-ghost" style="margin:0" onclick="document.getElementById('signFile').click()">Pilih tanda tangan</button>
@@ -782,19 +808,22 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <input type="file" id="signFile" accept="image/*" hidden onchange="signUpload(this.files[0])">
         <div id="signPrev" style="margin-top:8px"></div>
       </div>
-    </div>
+      </div>
+    </details>
 
-    <div class="card">
-      <p class="card-title">Data &amp; backup</p>
-      <p class="set-hint">Seluruh data order, klien, dan pengaturan tersimpan hanya di perangkat ini. Ekspor rutin sebagai file JSON dan simpan ke Drive/WA sendiri. Import untuk restore atau pindah perangkat &mdash; import <b>mengganti</b> semua data yang ada.</p>
+    <details class="set-acc">
+      <summary>Data &amp; backup</summary>
+      <div class="set-acc-body">
+      <p class="set-hint" style="margin-top:0">Seluruh data order, klien, dan pengaturan tersimpan hanya di perangkat ini. Ekspor rutin sebagai file JSON dan simpan ke Drive/WA sendiri. Import untuk restore atau pindah perangkat &mdash; import <b>mengganti</b> semua data yang ada.</p>
       <div class="btn-row">
         <button class="btn-ghost" onclick="exportData()">Ekspor data</button>
         <button class="btn-ghost" onclick="document.getElementById('importFile').click()">Import data</button>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" hidden onchange="importData(this.files[0])">
       <p class="set-hint" id="lastBackupInfo"></p>
-      <button class="btn-ghost btn-danger" style="margin-top:12px" onclick="wipeAllData()">Hapus semua data (mulai fresh)<small>kosongkan perangkat ini &mdash; backup dulu bila perlu</small></button>
-    </div>
+      <button class="btn-ghost btn-danger" style="margin:12px 0 0" onclick="wipeAllData()">Hapus semua data (mulai fresh)<small>kosongkan perangkat ini &mdash; backup dulu bila perlu</small></button>
+      </div>
+    </details>
   </section>
 
   <!-- ============ v27: LAYAR POS ============ -->
@@ -885,12 +914,13 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       <div class="form-group"><label>Catatan desain / file &mdash; opsional</label><input type="text" id="noDesign" placeholder="cth: nota-toko-abc-v2.pdf &middot; plat lama rak B"></div>
       <div class="grid">
         <div class="form-group"><label>Harga produk (Rp)</label><input type="text" inputmode="numeric" id="noPrice" oninput="fmtNum(this);noBillInfo()"></div>
-        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noOngkir" placeholder="0" oninput="fmtNum(this);noBillInfo()"></div>
+        <div class="form-group"><label>Diskon (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noDisc" placeholder="0" oninput="fmtNum(this);noBillInfo()"></div>
       </div>
       <div class="grid">
+        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noOngkir" placeholder="0" oninput="fmtNum(this);noBillInfo()"></div>
         <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noDP" placeholder="0" oninput="fmtNum(this)"></div>
-        <div class="form-group"><label>Total tagihan klien</label><input type="text" id="noTotal" readonly tabindex="-1" style="background:var(--brand-soft);font-weight:800;color:var(--brand-strong)"></div>
       </div>
+      <div class="form-group"><label>Total tagihan klien</label><input type="text" id="noTotal" readonly tabindex="-1" style="background:var(--brand-soft);font-weight:800;color:var(--brand-strong)"></div>
       <button class="btn-primary" onclick="saveNewOrder()">Simpan order</button>
     </div>
   </section>
@@ -1982,6 +2012,11 @@ const paidSum = o => (o.payments || []).reduce((s, p) => s + (p.amt || 0), 0);
 // produk saja (tanpa ongkir) — dipakai untuk omzet & profit (ongkir bukan omzet,
 // bukan profit; ia titipan yang diteruskan ke klien). Order lama tanpa o.ongkir → produk = price.
 const ordProduk = o => (o.price || 0) - (o.ongkir || 0);
+// Diskon (v42): o.disc = potongan harga produk yg dikurangkan sebelum masuk o.price
+// (o.price = produk − diskon + ongkir). Karena diskon SUDAH terpotong di o.price,
+// ordProduk otomatis = produk NETTO → omzet & profit ikut turun tanpa jalur khusus.
+// ordBruto = harga produk sebelum diskon (untuk tampilan rincian). Order lama → disc 0.
+const ordBruto = o => ordProduk(o) + (o.disc || 0);
 function payBadge(o) {
   const p = paidSum(o);
   if (p <= 0) return ["Belum bayar", "pay-none"];
@@ -2137,9 +2172,10 @@ window.posOpenOrder = function (id) {
     </div>
     <div class="card">
       <p class="card-title t-yel">Pembayaran <span class="badge ${pc}" style="margin-left:6px">${pl}</span></p>
-      ${o.ongkir ? `<div class="row"><span class="lbl">Produk</span><span class="dots"></span><strong class="val">${rp(ordProduk(o))}</strong></div>
-      <div class="row"><span class="lbl">Ongkir</span><span class="dots"></span><strong class="val">${rp(o.ongkir)}</strong></div>` : ""}
-      <div class="row"><span class="lbl">${o.ongkir ? "Total tagihan" : "Harga total"}</span><span class="dots"></span><strong class="val">${rp(o.price)}</strong></div>
+      ${(o.disc || o.ongkir) ? `<div class="row"><span class="lbl">Produk</span><span class="dots"></span><strong class="val">${rp(ordBruto(o))}</strong></div>` : ""}
+      ${o.disc ? `<div class="row"><span class="lbl">Diskon</span><span class="dots"></span><strong class="val" style="color:var(--danger)">&minus; ${rp(o.disc)}</strong></div>` : ""}
+      ${o.ongkir ? `<div class="row"><span class="lbl">Ongkir</span><span class="dots"></span><strong class="val">${rp(o.ongkir)}</strong></div>` : ""}
+      <div class="row"><span class="lbl">${(o.disc || o.ongkir) ? "Total tagihan" : "Harga total"}</span><span class="dots"></span><strong class="val">${rp(o.price)}</strong></div>
       <div class="row"><span class="lbl">Sudah dibayar</span><span class="dots"></span><strong class="val">${rp(paid)}</strong></div>
       <div class="row"><span class="lbl"><b>Sisa tagihan</b></span><span class="dots"></span><strong class="val" style="${sisa > 0 ? "color:var(--danger)" : "color:var(--green)"}">${rp(sisa)}</strong></div>
       ${(o.payments || []).map(p => `<div class="row" style="font-size:12px"><span class="lbl">${new Date(p.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span><span class="dots"></span><span class="val">${rp(p.amt)}</span></div>`).join("")}
@@ -2218,7 +2254,7 @@ Klien: ${c ? c.name : "-"}${c && c.phone ? "\nTelp: " + c.phone : ""}
 --------------------------------
 ${itemTxt}
 --------------------------------
-${o.ongkir ? `Produk: ${rp(ordProduk(o))}\nOngkir: ${rp(o.ongkir)}\nTotal tagihan: ${rp(o.price)}` : `Harga total: ${rp(o.price)}`}
+${(o.disc || o.ongkir) ? `Produk: ${rp(ordBruto(o))}${o.disc ? "\nDiskon: -" + rp(o.disc) : ""}${o.ongkir ? "\nOngkir: " + rp(o.ongkir) : ""}\nTotal tagihan: ${rp(o.price)}` : `Harga total: ${rp(o.price)}`}
 Dibayar: ${rp(paid)}
 Sisa: ${rp(sisa)}${o.deadline ? "\nEstimasi selesai: " + fmtDate(o.deadline) : ""}
 Status: ${STATUS_LBL[o.status]}`;
@@ -2349,8 +2385,9 @@ function itemStockNote(inp, calc, compact) {
 // ---- order baru (ACC) ----
 window.noBillInfo = function () {
   const produk = pInt(byId("noPrice").value) || 0;
+  const disc = pInt(byId("noDisc").value) || 0;
   const ongkir = pInt(byId("noOngkir").value) || 0;
-  byId("noTotal").value = rp(produk + ongkir);
+  byId("noTotal").value = rp(Math.max(0, produk - disc) + ongkir);
 };
 window.openNewOrder = function () {
   ORDER_ITEMS = CART.length ? CART.slice() : (lastCalc ? [snapshotItem()] : []);
@@ -2364,7 +2401,7 @@ window.openNewOrder = function () {
   sel.innerHTML = `<option value="">— Klien baru —</option>` +
     [...POS.clients].sort((a, b) => a.name.localeCompare(b.name, "id"))
       .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
-  ["noName", "noPhone", "noAddr", "noDesign", "noDeadline", "noDP", "noOngkir"].forEach(id => { byId(id).value = ""; });
+  ["noName", "noPhone", "noAddr", "noDesign", "noDeadline", "noDP", "noDisc", "noOngkir"].forEach(id => { byId(id).value = ""; });
   byId("noPrice").value = grp(total);
   noBillInfo();
   byId("noStockInfo").innerHTML = multi
@@ -2388,16 +2425,19 @@ window.onClientSelChange = function () {
 };
 window.saveNewOrder = async function () {
   if (!dbGuard() || !ORDER_ITEMS.length) return;
-  clearErr("noName"); clearErr("noPrice"); clearErr("noDP");
+  clearErr("noName"); clearErr("noPrice"); clearErr("noDP"); clearErr("noDisc");
   const selVal = byId("noClientSel").value;
   const name = byId("noName").value.trim();
   const produk = pInt(byId("noPrice").value);
+  const disc = pInt(byId("noDisc").value) || 0;
   const ongkir = pInt(byId("noOngkir").value) || 0;
-  const price = (produk || 0) + ongkir;   // total tagihan = produk + ongkir
+  const price = Math.max(0, (produk || 0) - disc) + ongkir;   // total tagihan = (produk − diskon) + ongkir
   const dp = pInt(byId("noDP").value) || 0;
   let bad = false;
   if (!selVal && !name) { markErr("noName", "Isi nama klien"); bad = true; }
   if (!produk || produk <= 0) { markErr("noPrice", "Isi harga produk"); bad = true; }
+  if (disc < 0) { markErr("noDisc", "Diskon tak boleh minus"); bad = true; }
+  else if (disc > (produk || 0)) { markErr("noDisc", "Diskon melebihi harga produk"); bad = true; }
   if (ongkir < 0) { markErr("noOngkir", "Ongkir tak boleh minus"); bad = true; }
   if (dp < 0 || (price > 0 && dp > price)) { markErr("noDP", "DP melebihi total tagihan"); bad = true; }
   if (bad) return;
@@ -2419,6 +2459,7 @@ window.saveNewOrder = async function () {
     payments: dp > 0 ? [{ amt: dp, ts: Date.now() }] : [],
     price,
     ongkir,
+    disc,
     designNote: byId("noDesign").value.trim(),
     prev: REPEAT ? { no: REPEAT.prevNo, price: REPEAT.prevPrice } : null,
     items,
@@ -2918,7 +2959,7 @@ function resiHtml(o) {
     `}
     ${o.deadline ? `<div>Estimasi selesai: ${fmtDate(o.deadline)}</div>` : ""}
     <div class="r-hr"></div>
-    ${o.ongkir ? row("Produk", rp(ordProduk(o))) + row("Ongkir", rp(o.ongkir)) : ""}
+    ${(o.disc || o.ongkir) ? row("Produk", rp(ordBruto(o))) + (o.disc ? row("Diskon", "-" + rp(o.disc)) : "") + (o.ongkir ? row("Ongkir", rp(o.ongkir)) : "") : ""}
     ${row("TOTAL", rp(o.price), "r-b")}
     ${(o.payments || []).length ? `<div class="r-b" style="margin-top:3px">Pembayaran</div>` + (o.payments || []).map(p => row(tglS(p.ts), rp(p.amt))).join("") : ""}
     ${row("Dibayar", rp(paid))}
@@ -3210,8 +3251,12 @@ function notaPdfBlob(o) {
 
   // pembayaran
   txt(ML, y, "PEMBAYARAN", { bold: true, size: 7.5, col: GREY }); y -= 15;
-  if (o.ongkir) { row("Produk", rp(ordProduk(o))); row("Ongkir", rp(o.ongkir)); }
-  row(o.ongkir ? "Total tagihan" : "Harga total", rp(o.price), { bold: true });
+  if (o.disc || o.ongkir) {
+    row("Produk", rp(ordBruto(o)));
+    if (o.disc) row("Diskon", "-" + rp(o.disc));
+    if (o.ongkir) row("Ongkir", rp(o.ongkir));
+  }
+  row((o.disc || o.ongkir) ? "Total tagihan" : "Harga total", rp(o.price), { bold: true });
   (o.payments || []).forEach(p => {
     row("Bayar " + new Date(p.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }), rp(p.amt));
   });

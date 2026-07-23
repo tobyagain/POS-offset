@@ -280,6 +280,27 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   Kesan "tidak berfungsi" kemungkinan dari kartu tombol yg berantakan (sudah
   dirapikan). Tidak ada perubahan logika repeat.
 
+## Diskon order + Pengaturan accordion (v42)
+- **Diskon = potongan Rp nominal per order** (bukan %, bukan per item) — keputusan
+  Toby. Satu field "Diskon (Rp)" di form order, di antara Harga produk & Ongkir.
+  Konsisten dgn field uang lain (fmtNum/pInt/grp).
+- **Diskon MENGURANGI omzet & profit** (beda dari ongkir yang netral) — keputusan
+  Toby. Ini potongan harga jual nyata, jadi pendapatan produk memang turun.
+  Implementasi: diskon dipotong dari harga produk SEBELUM masuk `o.price`
+  (`o.price = (produk − diskon) + ongkir`), sehingga `ordProduk(o)` otomatis =
+  produk netto → omzet/profit ikut turun tanpa jalur khusus. `o.disc` disimpan
+  hanya untuk tampilan rincian; `ordBruto(o) = ordProduk + o.disc` = harga sebelum
+  diskon. Kas masuk (pembayaran) tetap uang riil atas total tagihan setelah diskon.
+- **Validasi:** diskon tak boleh minus & tak boleh melebihi harga produk.
+- **Order partner TIDAK punya diskon** — harga jual ke klien sudah disetel langsung
+  (mau kasih potongan → turunkan harga jual). Menjaga scope & logika markup partner.
+- **Menu Pengaturan jadi accordion** ("agar tidak banyak scroll"). Tiap bagian
+  (Mesin, Kertas, Parameter lain, Identitas usaha, Data & backup) = `<details
+  class="set-acc">` yang bisa dilipat; awalnya tertutup. Native `<details>` (tanpa
+  JS) → robust & tak ganggu tes (elemen tetap di DOM saat terlipat). `#settingsCard`
+  tetap div (display-nya = sentinel buka/tutup layar Pengaturan, dibaca blok nav).
+  Tombol Simpan/Reset tetap di luar accordion agar selalu terlihat.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

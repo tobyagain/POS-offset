@@ -609,7 +609,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
           </div>
         </div>
         <div class="grid">
-          <div class="form-group"><label>Profit dasar (Rp) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="baseProfit" value="250000"><div class="hint" hidden>Keuntungan minimum per pekerjaan, berlaku untuk semua oplah.</div></div>
+          <div class="form-group"><label>Profit dasar (Rp) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="text" inputmode="numeric" id="baseProfit" value="250.000" oninput="fmtNum(this)"><div class="hint" hidden>Keuntungan minimum per pekerjaan, berlaku untuk semua oplah.</div></div>
           <div class="form-group"><label>Markup oplah (%) <button type="button" class="tip" onclick="toggleTip(this)">i</button></label><input type="number" id="markup" value="100"><div class="hint" hidden>Keuntungan tambahan untuk oplah di atas 1.000 pcs &mdash; dihitung dari modal per pcs, untuk tiap pcs di atas 1.000.</div></div>
         </div>
       </div>
@@ -851,7 +851,7 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <p class="card-title t-yel">Catat pengeluaran</p>
         <div class="grid">
           <div class="form-group"><label>Tanggal</label><input type="date" id="expDate"></div>
-          <div class="form-group"><label>Nominal (Rp)</label><input type="number" id="expAmt" placeholder="0"></div>
+          <div class="form-group"><label>Nominal (Rp)</label><input type="text" inputmode="numeric" id="expAmt" placeholder="0" oninput="fmtNum(this)"></div>
         </div>
         <div class="form-group"><label>Kategori / jenis</label><input type="text" id="expCat" list="expCatDl" placeholder="cth: listrik, gaji, servis mesin"><datalist id="expCatDl"></datalist></div>
         <div class="form-group"><label>Catatan &mdash; opsional</label><input type="text" id="expNote" placeholder="cth: token listrik bengkel"></div>
@@ -884,11 +884,11 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
       <p class="card-title t-yel">Detail order</p>
       <div class="form-group"><label>Catatan desain / file &mdash; opsional</label><input type="text" id="noDesign" placeholder="cth: nota-toko-abc-v2.pdf &middot; plat lama rak B"></div>
       <div class="grid">
-        <div class="form-group"><label>Harga produk (Rp)</label><input type="number" id="noPrice" oninput="noBillInfo()"></div>
-        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="number" id="noOngkir" placeholder="0" oninput="noBillInfo()"></div>
+        <div class="form-group"><label>Harga produk (Rp)</label><input type="text" inputmode="numeric" id="noPrice" oninput="fmtNum(this);noBillInfo()"></div>
+        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noOngkir" placeholder="0" oninput="fmtNum(this);noBillInfo()"></div>
       </div>
       <div class="grid">
-        <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="noDP" placeholder="0"></div>
+        <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="noDP" placeholder="0" oninput="fmtNum(this)"></div>
         <div class="form-group"><label>Total tagihan klien</label><input type="text" id="noTotal" readonly tabindex="-1" style="background:var(--brand-soft);font-weight:800;color:var(--brand-strong)"></div>
       </div>
       <button class="btn-primary" onclick="saveNewOrder()">Simpan order</button>
@@ -918,14 +918,14 @@ input.err { border-color: var(--danger) !important; box-shadow: 0 0 0 4px oklch(
         <div class="form-group"><label>Nama partner &mdash; opsional</label><input type="text" id="poPartner" placeholder="cth: Percetakan X"></div>
       </div>
       <div class="grid">
-        <div class="form-group"><label>Modal dari partner (Rp)</label><input type="number" id="poCost" oninput="poRecalc()"></div>
+        <div class="form-group"><label>Modal dari partner (Rp)</label><input type="text" inputmode="numeric" id="poCost" oninput="fmtNum(this);poRecalc()"></div>
         <div class="form-group"><label>Markup (%)</label><input type="number" id="poMarkup" value="20" oninput="poRecalc()"></div>
       </div>
       <div class="grid">
-        <div class="form-group"><label>Harga jual ke klien (Rp)</label><input type="number" id="poPrice" oninput="poInfo()"></div>
-        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="number" id="poOngkir" placeholder="0" oninput="poInfo()"></div>
+        <div class="form-group"><label>Harga jual ke klien (Rp)</label><input type="text" inputmode="numeric" id="poPrice" oninput="fmtNum(this);poInfo()"></div>
+        <div class="form-group"><label>Ongkir (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="poOngkir" placeholder="0" oninput="fmtNum(this);poInfo()"></div>
       </div>
-      <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="number" id="poDP" placeholder="0"></div>
+      <div class="form-group"><label>DP awal (Rp) &mdash; opsional</label><input type="text" inputmode="numeric" id="poDP" placeholder="0" oninput="fmtNum(this)"></div>
       <div id="poBreak" hidden style="margin:0 0 8px"></div>
       <p class="set-hint" id="poProfit" style="margin:0 0 10px"></p>
       <button class="btn-ghost" onclick="poSharePenawaran()">Kirim penawaran<small>untuk klien &middot; tanpa modal partner</small></button>
@@ -1171,6 +1171,16 @@ let lastCalc = null;         // snapshot hasil kalkulasi terakhir untuk fitur ki
 // ================= KIRIM PER AUDIENS =================
 const rp = n => "Rp " + Math.round(n).toLocaleString("id-ID");
 
+// Input angka berpemisah ribuan (v41): field uang bertipe text + inputmode numeric.
+// grp(n) memformat angka untuk ditaruh ke .value; pInt(v) membaca balik ke integer
+// (buang titik/karakter non-digit). fmtNum(el) memformat live saat mengetik.
+const grp = n => (n === "" || n === null || n === undefined) ? "" : Number(n).toLocaleString("id-ID");
+const pInt = v => parseInt(String(v).replace(/[^\d]/g, ""), 10) || 0;
+window.fmtNum = function (el) {
+  const digits = el.value.replace(/[^\d]/g, "");
+  el.value = digits ? Number(digits).toLocaleString("id-ID") : "";
+};
+
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 function shareText(text) {
@@ -1412,7 +1422,7 @@ let lastAlts = null;
 
 function doCalculate(pW, pH, qty, scenarios, gOn) {
   const colorCount = parseInt(document.getElementById("colors").value);
-  const bProf = parseInt(document.getElementById("baseProfit").value) || 0;
+  const bProf = pInt(document.getElementById("baseProfit").value) || 0;
   const mPct = parseFloat(document.getElementById("markup").value) || 0;
 
   const q = quoteFor(scenarios, qty, colorCount, bProf, mPct);
@@ -2141,11 +2151,11 @@ window.posOpenOrder = function (id) {
     <div class="card">
       <button class="btn-ghost" onclick="posShareNota()">Kirim nota<small>WA / salin teks</small></button>
       <button class="btn-ghost" onclick="posShareNotaPdf()">Nota PDF<small>file untuk klien</small></button>
-      <div class="pay-add">
+      <div class="btn-row">
         <button class="btn-ghost" onclick="posPrintResi()">Resi order</button>
         <button class="btn-ghost" onclick="posPrintResiKirim()">Resi kirim</button>
       </div>
-      <button class="btn-ghost" onclick="posRepeat(${o.id})">Repeat order<small>hitung ulang harga sekarang</small></button>
+      <button class="btn-ghost" style="margin-top:10px" onclick="posRepeat(${o.id})">Repeat order<small>hitung ulang harga sekarang</small></button>
       <button class="btn-ghost btn-danger" onclick="posDelOrder()">Hapus order</button>
     </div>`;
   navScreen("odetail");
@@ -2280,7 +2290,7 @@ function snapshotItem() {
       pW: lastCalc.pW, pH: lastCalc.pH, colors: lastCalc.colorCount,
       gripper: byId("useGripper").checked, qty: lastCalc.qty,
       paperByClient: !!lastCalc.paperByClient,
-      baseProfit: parseInt(byId("baseProfit").value) || 0,
+      baseProfit: pInt(byId("baseProfit").value) || 0,
       markup: parseFloat(byId("markup").value) || 0
     },
     price: Math.round(lastCalc.totalOffer)
@@ -2319,8 +2329,8 @@ function itemStockNote(inp, calc, compact) {
 
 // ---- order baru (ACC) ----
 window.noBillInfo = function () {
-  const produk = parseInt(byId("noPrice").value) || 0;
-  const ongkir = parseInt(byId("noOngkir").value) || 0;
+  const produk = pInt(byId("noPrice").value) || 0;
+  const ongkir = pInt(byId("noOngkir").value) || 0;
   byId("noTotal").value = rp(produk + ongkir);
 };
 window.openNewOrder = function () {
@@ -2336,7 +2346,7 @@ window.openNewOrder = function () {
     [...POS.clients].sort((a, b) => a.name.localeCompare(b.name, "id"))
       .map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join("");
   ["noName", "noPhone", "noAddr", "noDesign", "noDeadline", "noDP", "noOngkir"].forEach(id => { byId(id).value = ""; });
-  byId("noPrice").value = total;
+  byId("noPrice").value = grp(total);
   noBillInfo();
   byId("noStockInfo").innerHTML = multi
     ? ORDER_ITEMS.map((it, i) => `<div style="margin-bottom:6px"><span class="set-hint" style="font-weight:700">Item ${i + 1}</span>${itemStockNote(it.inputs, it.calc, true)}</div>`).join("")
@@ -2362,10 +2372,10 @@ window.saveNewOrder = async function () {
   clearErr("noName"); clearErr("noPrice"); clearErr("noDP");
   const selVal = byId("noClientSel").value;
   const name = byId("noName").value.trim();
-  const produk = parseInt(byId("noPrice").value);
-  const ongkir = parseInt(byId("noOngkir").value) || 0;
+  const produk = pInt(byId("noPrice").value);
+  const ongkir = pInt(byId("noOngkir").value) || 0;
   const price = (produk || 0) + ongkir;   // total tagihan = produk + ongkir
-  const dp = parseInt(byId("noDP").value) || 0;
+  const dp = pInt(byId("noDP").value) || 0;
   let bad = false;
   if (!selVal && !name) { markErr("noName", "Isi nama klien"); bad = true; }
   if (!produk || produk <= 0) { markErr("noPrice", "Isi harga produk"); bad = true; }
@@ -2431,7 +2441,7 @@ function applyItemToForm(inp) {
   byId("useGripper").checked = inp.gripper !== false;
   byId("paperByClient").checked = !!inp.paperByClient;
   byId("qty").value = inp.qty; byId("qtyAlt").value = "";
-  if (inp.baseProfit) byId("baseProfit").value = inp.baseProfit;
+  if (inp.baseProfit) byId("baseProfit").value = grp(inp.baseProfit);
   if (inp.markup || inp.markup === 0) byId("markup").value = inp.markup;
   if (typeof updateData === "function") updateData();
   return mi >= 0 && pi >= 0;
@@ -2476,14 +2486,14 @@ window.posRepeat = function (id) {
 // ---- order partner v31 (makloon: partner beri harga jadi, kita markup) ----
 let PREPEAT = null; // { prevNo, prevPrice } utk banner repeat order partner
 window.poRecalc = function () {
-  const cost = parseInt(byId("poCost").value) || 0;
+  const cost = pInt(byId("poCost").value) || 0;
   const m = parseFloat(byId("poMarkup").value) || 0;
-  if (cost > 0) byId("poPrice").value = Math.round(cost * (1 + m / 100));
+  if (cost > 0) byId("poPrice").value = grp(Math.round(cost * (1 + m / 100)));
   poInfo();
 };
 window.poInfo = function () {
-  const cost = parseInt(byId("poCost").value) || 0;
-  const price = parseInt(byId("poPrice").value) || 0;
+  const cost = pInt(byId("poCost").value) || 0;
+  const price = pInt(byId("poPrice").value) || 0;
   const qty = parseInt(byId("poQty").value) || 0;
   const brk = byId("poBreak");
   const ready = cost > 0 && price > 0;
@@ -2499,7 +2509,7 @@ window.poInfo = function () {
   } else {
     brk.hidden = true; brk.innerHTML = "";
   }
-  const ongkir = parseInt(byId("poOngkir").value) || 0;
+  const ongkir = pInt(byId("poOngkir").value) || 0;
   byId("poProfit").innerText = ready
     ? `Profit: ${rp(price - cost)} (modal ${rp(cost)} → jual ${rp(price)})${ongkir > 0 ? ` · Total tagihan (+ongkir): ${rp(price + ongkir)}` : ""}` : "";
 };
@@ -2515,7 +2525,7 @@ window.openPartnerOrder = function (pre) {
     byId("poDesc").value = pre.desc || "";
     byId("poQty").value = pre.qty || "";
     byId("poPartner").value = pre.partnerName || "";
-    byId("poCost").value = pre.cost || "";
+    byId("poCost").value = grp(pre.cost || "");
     if (pre.markup || pre.markup === 0) byId("poMarkup").value = pre.markup;
     poRecalc();
     PREPEAT = { prevNo: pre.prevNo, prevPrice: pre.prevPrice };
@@ -2529,7 +2539,7 @@ window.openPartnerOrder = function (pre) {
 // usaha (keputusan v25) dan TANPA modal partner.
 window.poSharePenawaran = function () {
   const desc = byId("poDesc").value.trim();
-  const price = parseInt(byId("poPrice").value) || 0;
+  const price = pInt(byId("poPrice").value) || 0;
   const qty = parseInt(byId("poQty").value) || 0;
   if (!desc || price <= 0) { showToast("⚠️ Isi deskripsi pekerjaan & harga jual dulu", "err"); return; }
   shareText(`🧾 *PENAWARAN HARGA*
@@ -2551,11 +2561,11 @@ window.savePartnerOrder = async function () {
   const selVal = byId("poClientSel").value;
   const name = byId("poName").value.trim();
   const desc = byId("poDesc").value.trim();
-  const cost = parseInt(byId("poCost").value);
-  const jual = parseInt(byId("poPrice").value);
-  const ongkir = parseInt(byId("poOngkir").value) || 0;
+  const cost = pInt(byId("poCost").value);
+  const jual = pInt(byId("poPrice").value);
+  const ongkir = pInt(byId("poOngkir").value) || 0;
   const price = (jual || 0) + ongkir;   // total tagihan = jual + ongkir
-  const dp = parseInt(byId("poDP").value) || 0;
+  const dp = pInt(byId("poDP").value) || 0;
   let bad = false;
   if (!selVal && !name) { markErr("poName", "Isi nama klien"); bad = true; }
   if (!desc) { markErr("poDesc", "Isi deskripsi pekerjaan"); bad = true; }
@@ -2826,7 +2836,7 @@ window.expSave = async function () {
   if (!dbGuard()) return;
   const date = byId("expDate").value || todayIso();
   const cat = byId("expCat").value.trim();
-  const amt = parseInt(byId("expAmt").value);
+  const amt = pInt(byId("expAmt").value);
   if (!cat) { showToast("⚠️ Isi kategori / jenis pengeluaran", "err"); return; }
   if (!amt || amt <= 0) { showToast("⚠️ Isi nominal pengeluaran", "err"); return; }
   const e = { date, cat, amt, note: byId("expNote").value.trim(), hpp: byId("expHpp").checked, ts: Date.now() };

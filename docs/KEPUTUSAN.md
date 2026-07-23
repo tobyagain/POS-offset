@@ -261,6 +261,25 @@ persetujuan eksplisit; kalau ragu, tanya dulu.
   tebal "N. UkuranxUkuran cm, K warna", baris bahan+qty, lalu `Subtotal` rata
   kanan (pakai `.r-row`). Konsisten dgn baris TOTAL/SISA.
 
+## Input uang berpemisah ribuan + poles tombol (v41)
+- **Angka uang berpemisah ribuan saat diketik.** `<input type="number">` tak bisa
+  menampilkan titik ribuan, jadi 9 field uang (noPrice, noOngkir, noDP, poCost,
+  poPrice, poOngkir, poDP, baseProfit, expAmt) diubah ke `type="text"
+  inputmode="numeric"` + `oninput="fmtNum(this)"`. Helper baru: `fmtNum(el)`
+  format live (id-ID → titik), `pInt(v)` baca balik ke integer (buang non-digit),
+  `grp(n)` untuk mengisi `.value` terformat. SEMUA baca (`parseInt(...value)`) →
+  `pInt`, SEMUA tulis prefill (`.value = n`) → `grp(n)`. Field non-uang
+  (pW/pH/qty/gsm/markup%/dimensi) TETAP `number` — magnitudonya kecil/struktural.
+  Tes: `.value` field uang dibaca via `num()` (bukan `parseInt`, yg berhenti di
+  titik pertama). Stok (lembar) belum diformat — kandidat lanjutan bila diminta.
+- **Tombol Resi order/kirim dirapikan.** Dulu di `.pay-add` (sisa dropdown lebar
+  kertas yg dipindah ke Pengaturan) → dua tombol `width:auto` kecil rata kiri,
+  tak konsisten. Sekarang `.btn-row` (flex:1 each) → dua tombol sama lebar.
+- **Repeat order dikonfirmasi BERFUNGSI.** Diuji ulang (jsdom + runtime): klik
+  Repeat → prefill form + hitung ulang → pindah ke layar Hasil, tanpa error.
+  Kesan "tidak berfungsi" kemungkinan dari kartu tombol yg berantakan (sudah
+  dirapikan). Tidak ada perubahan logika repeat.
+
 ## Arah teknis
 - Tetap single-file vanilla; TANPA library runtime; PDF dirakit manual.
 - Roadmap: git (selesai) → modul+Vite+PWA saat berat → PocketBase saat sync/jualan.

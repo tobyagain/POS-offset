@@ -103,7 +103,7 @@ async function confirmDialog(w, accept = true) {
   w.openNewOrder();
   d.getElementById("noName").value = "Toko Laporan";
   d.getElementById("noDP").value = "100000";
-  const price = parseInt(d.getElementById("noPrice").value);
+  const price = num(d.getElementById("noPrice").value);
   await w.saveNewOrder(); await tick();
 
   // Laporan bulan berjalan (layar mengingat tab terakhir -> pindah ke Laporan dulu)

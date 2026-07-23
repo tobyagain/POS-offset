@@ -98,7 +98,7 @@ const vis = (w, id) => !w.document.getElementById(id).hidden;
   d.getElementById("poCost").value = "500000";
   d.getElementById("poMarkup").value = "20";
   w.poRecalc();
-  ok(parseInt(d.getElementById("poPrice").value) === 600000, "markup 20% otomatis: modal 500rb -> jual 600rb");
+  ok(num(d.getElementById("poPrice").value) === 600000, "markup 20% otomatis: modal 500rb -> jual 600rb");
   // poProfit ditulis via innerText (expando di jsdom) — baca lewat innerText
   ok(String(d.getElementById("poProfit").innerText).includes("100.000"), "info profit 100rb tampil");
 
@@ -152,7 +152,7 @@ const vis = (w, id) => !w.document.getElementById(id).hidden;
   w.navGo("orders");
   const pCard = [...d.querySelectorAll("#orderList .ocard")].find(c => c.textContent.includes("via partner"));
   w.posRepeat(parseInt(pCard.getAttribute("onclick").match(/\d+/)[0])); await tick();
-  ok(vis(w, "scrPartnerOrder") && d.getElementById("poCost").value === "500000" && d.getElementById("poDesc").value.includes("Nota NCR"), "repeat partner: form terprefill dari order lama");
+  ok(vis(w, "scrPartnerOrder") && num(d.getElementById("poCost").value) === 500000 && d.getElementById("poDesc").value.includes("Nota NCR"), "repeat partner: form terprefill dari order lama");
   ok(!d.getElementById("poOldPrice").hidden && d.getElementById("poOldPrice").textContent.includes("600.000"), "repeat partner: banner harga lama tampil");
 
   // Persistensi

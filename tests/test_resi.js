@@ -10,6 +10,7 @@ function ok(cond, msg) {
   else { fail++; console.error("  ✗ FAIL: " + msg); }
 }
 const tick = (ms = 30) => new Promise(r => setTimeout(r, ms));
+const num = s => parseInt(String(s).replace(/[^\d]/g, "") || "0");
 const rpID = n => "Rp " + Math.round(n).toLocaleString("id-ID");
 
 function boot({ width = 390, idb } = {}) {
@@ -60,7 +61,7 @@ function boot({ width = 390, idb } = {}) {
   d.getElementById("noPhone").value = "081234000";
   d.getElementById("noAddr").value = "Jl. Mawar No. 1, Blitar";
   d.getElementById("noDP").value = "100000";
-  const price = parseInt(d.getElementById("noPrice").value);
+  const price = num(d.getElementById("noPrice").value);
   await w.saveNewOrder(); await tick();
   const orderNo = d.getElementById("odTitle").innerText;
 

@@ -8,7 +8,7 @@ Dipakai tim di HP (wizard) dan desktop (workbench). Bahasa UI: Indonesia.
 
 ```bash
 npm install        # sekali saja (jsdom + fake-indexeddb untuk tes)
-npm test           # WAJIB lulus sebelum commit apa pun (217 asertsi)
+npm test           # WAJIB lulus sebelum commit apa pun (219 asertsi)
 ```
 
 Tidak ada build step. `index.html` adalah source sekaligus artefak distribusi.
@@ -162,5 +162,8 @@ rapi (baris tumpuk), kalkulator bersih setelah simpan order, watermark nota PDF
 7%, pembulatan total penawaran ke atas (kelipatan Rp 1.000) + baris rinciannya
 + alamat/teks panjang membungkus rapi (HTML detail, nota PDF via `pdfWrap`,
 resi) → v40 ongkir (ditagihkan ke klien, di luar omzet/profit) + lebar kertas
-resi pindah ke Pengaturan + format resi multi-item dirapikan (subtotal per item).
+resi pindah ke Pengaturan + format resi multi-item dirapikan (subtotal per item)
+→ v41 input uang berpemisah ribuan (field uang = text+inputmode numeric, format
+live via `fmtNum`, baca balik via `pInt`, tulis via `grp`) + tombol resi
+order/kirim dirapikan (equal-width `btn-row`).
 Detail keputusan: `docs/KEPUTUSAN.md`.

@@ -86,14 +86,19 @@ async function confirmDialog(w, accept = true) {
   // ACC -> order baru; harga terprefill dari penawaran
   w.openNewOrder();
   ok(vis(w, "scrNewOrder"), "layar order baru tampil setelah ACC");
-  ok(parseInt(d.getElementById("noPrice").value) === offerNow, "harga terprefill dari total penawaran");
+  ok(num(d.getElementById("noPrice").value) === offerNow, "harga terprefill dari total penawaran");
+  // Input angka berpemisah ribuan (v41)
+  ok(d.getElementById("noPrice").value.includes("."), "harga produk tampil berpemisah ribuan (mis. 570.000)");
+  const ong = d.getElementById("noOngkir"); ong.value = "250000"; w.fmtNum(ong);
+  ok(ong.value === "250.000", "mengetik angka diformat live jadi 250.000");
+  ong.value = "";
 
   // Validasi: tanpa nama klien harus ditolak
   await w.saveNewOrder();
   ok(vis(w, "scrNewOrder"), "order tanpa nama klien ditolak (tetap di form)");
 
   // Simpan order klien baru dengan DP
-  const priceNow = parseInt(d.getElementById("noPrice").value);
+  const priceNow = num(d.getElementById("noPrice").value);
   d.getElementById("noName").value = "Toko ABC";
   d.getElementById("noPhone").value = "0812345678";
   d.getElementById("noAddr").value = "Jl. Prapanca IV, Kec. Kby. Baru, Kota Jakarta Selatan, Daerah Khusus Ibukota Jakarta [Tokopedia Note: Jalan Prapanca IV No. 66] Kebayoran Baru";

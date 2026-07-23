@@ -12,14 +12,14 @@ function ok(cond, msg) {
 const tick = (ms = 30) => new Promise(r => setTimeout(r, ms));
 const num = s => parseInt(String(s).replace(/[^\d]/g, "") || "0");
 
-function boot({ idb } = {}) {
+function boot({ idb, width = 390 } = {}) {
   const dom = new JSDOM(html, {
     runScripts: "dangerously", url: "https://printcalc.local/", pretendToBeVisual: true,
     beforeParse(w) {
       w.indexedDB = idb || new FDBFactory();
       w.IDBKeyRange = FDBKeyRange;
-      Object.defineProperty(w, "innerWidth", { value: 390, configurable: true });
-      w.matchMedia = q => ({ matches: false, addEventListener() {}, addListener() {} });
+      Object.defineProperty(w, "innerWidth", { value: width, configurable: true });
+      w.matchMedia = q => ({ matches: width >= 980 && /min-width:\s*980px/.test(q), addEventListener() {}, addListener() {} });
       const noop = () => {};
       w.HTMLCanvasElement.prototype.getContext = function () {
         return new Proxy({ canvas: this, measureText: () => ({ width: 10 }) }, { get(t, k) { return k in t ? t[k] : noop; }, set() { return true; } });
@@ -120,6 +120,22 @@ function calcItem(w, { paper = 0, pW, pH, qty }) {
   w.openNewOrder();
   ok(d.getElementById("noCalcSum").textContent.includes("Item 2"), "repeat: order baru berisi 2 item");
   ok(!d.getElementById("noOldPrice").hidden, "repeat: banner harga lama tampil");
+
+  // Regresi workbench (v41): repeat multi-item HARUS pindah ke kalkulator, tidak
+  // mangkrak di detail order. Bug lama: cabang multi-item lupa navScreen("form")
+  // — di HP calculate() kebetulan pindah ke Hasil, tapi di workbench (≥980px)
+  // layar tetap di detail order (seolah tombol tak berfungsi).
+  const wWb = boot({ idb, width: 1000 });
+  await tick(80);
+  const dw = wWb.document;
+  wWb.navGo("orders");
+  for (let i = 0; i < 30 && !dw.querySelector("#orderList .ocard"); i++) { await tick(50); wWb.navGo("orders"); }
+  dw.querySelector("#orderList .ocard").click(); await tick();
+  ok(vis(wWb, "scrOrderDetail"), "workbench: detail order terbuka sebelum repeat");
+  const ridWb = parseInt(dw.getElementById("odBody").innerHTML.match(/posRepeat\((\d+)\)/)[1]);
+  wWb.posRepeat(ridWb); await tick();
+  ok(!vis(wWb, "scrOrderDetail"), "workbench: repeat multi-item pindah ke kalkulator (tidak mangkrak di detail order)");
+  ok(!dw.getElementById("repeatBanner").hidden && dw.getElementById("cartInd").textContent.includes("2 item"), "workbench: banner + draft 2 item aktif setelah repeat");
 
   // ===== Kompatibilitas mundur: order format lama (hanya o.calc, tanpa items) =====
   console.log("\n== ORDER FORMAT LAMA ==");

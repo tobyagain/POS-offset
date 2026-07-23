@@ -2464,7 +2464,10 @@ window.posRepeat = function (id) {
   REPEAT = { clientId: o.clientId, prevNo: o.no, prevPrice: o.price };
   const rb = byId("repeatBanner");
   if (items.length > 1) {
-    // Multi-item: susun ulang semua item ke draft, dihitung dgn tarif sekarang
+    // Multi-item: susun ulang semua item ke draft, dihitung dgn tarif sekarang.
+    // navScreen KE KALKULATOR dulu (sama seperti jalur 1 item) — kalau tidak,
+    // di workbench desktop layar tetap di detail order (seolah tak terjadi apa2).
+    navScreen("form");
     CART = [];
     let allFound = true;
     items.forEach(it => { if (!applyItemToForm(it.inputs)) allFound = false; calculate(); CART.push(snapshotItem()); });

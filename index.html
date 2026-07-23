@@ -2144,7 +2144,7 @@ window.posOpenOrder = function (id) {
       <div class="row"><span class="lbl"><b>Sisa tagihan</b></span><span class="dots"></span><strong class="val" style="${sisa > 0 ? "color:var(--danger)" : "color:var(--green)"}">${rp(sisa)}</strong></div>
       ${(o.payments || []).map(p => `<div class="row" style="font-size:12px"><span class="lbl">${new Date(p.ts).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span><span class="dots"></span><span class="val">${rp(p.amt)}</span></div>`).join("")}
       <div class="pay-add">
-        <div class="form-group" style="margin:0;flex:1"><input type="number" id="odPayAmt" placeholder="Nominal (Rp)"></div>
+        <div class="form-group" style="margin:0;flex:1"><input type="text" inputmode="numeric" id="odPayAmt" placeholder="Nominal (Rp)" oninput="fmtNum(this)"></div>
         <button class="btn-ghost" onclick="posAddPayment()">Catat bayar</button>
       </div>
     </div>
@@ -2171,7 +2171,7 @@ window.posSetStatus = async function (val) {
 window.posAddPayment = async function () {
   const o = POS.orders.find(x => x.id === curOrderId);
   if (!o || !dbGuard()) return;
-  const amt = parseInt(byId("odPayAmt").value);
+  const amt = pInt(byId("odPayAmt").value);
   if (!amt || amt <= 0) { showToast("⚠️ Isi nominal pembayaran", "err"); return; }
   if (paidSum(o) + amt > o.price) {
     const ok = await askConfirm(`Pembayaran ini melebihi total harga (${rp(o.price)}). Tetap catat?`, "Ya, catat");
@@ -2449,6 +2449,7 @@ function applyItemToForm(inp) {
 window.posRepeat = function (id) {
   const o = POS.orders.find(x => x.id === id);
   if (!o) return;
+  showToast("↻ Membuka repeat order…");
   if (o.calc.partner) {
     // Order partner tidak lewat kalkulator — buka form partner terprefill
     openPartnerOrder({
@@ -2871,6 +2872,7 @@ function resiHtml(o) {
   const paid = paidSum(o), sisa = Math.max(0, o.price - paid);
   const lunas = o.price > 0 && paid >= o.price;
   const tgl = ts => new Date(ts).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+  const tglS = ts => { const x = new Date(ts); return String(x.getDate()).padStart(2, "0") + "/" + String(x.getMonth() + 1).padStart(2, "0") + "/" + String(x.getFullYear()).slice(2); };
   const row = (l, v, cls) => `<div class="r-row${cls ? " " + cls : ""}"><span>${l}</span><span>${v}</span></div>`;
   return `
     ${b.name ? `<div class="r-c r-big">${esc(b.name)}</div>` : ""}
@@ -2896,7 +2898,7 @@ function resiHtml(o) {
     <div class="r-hr"></div>
     ${o.ongkir ? row("Produk", rp(ordProduk(o))) + row("Ongkir", rp(o.ongkir)) : ""}
     ${row("TOTAL", rp(o.price), "r-b")}
-    ${(o.payments || []).map(p => row("Bayar " + tgl(p.ts), rp(p.amt))).join("")}
+    ${(o.payments || []).length ? `<div class="r-b" style="margin-top:3px">Pembayaran</div>` + (o.payments || []).map(p => row(tglS(p.ts), rp(p.amt))).join("") : ""}
     ${row("Dibayar", rp(paid))}
     ${row("SISA", sisa > 0 ? rp(sisa) : "Rp 0", "r-b")}
     ${lunas ? `<div class="r-lunas">LUNAS</div>` : ""}

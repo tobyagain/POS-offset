@@ -77,6 +77,8 @@ function boot({ width = 390, idb } = {}) {
   ok(resi.textContent.includes(orderNo) && resi.textContent.includes("Toko Resi"), "resi memuat nomor order + nama klien");
   ok(resi.textContent.includes("TOTAL") && resi.textContent.includes(rpID(price)), "resi memuat harga total");
   ok(resi.textContent.includes("SISA") && resi.textContent.includes(rpID(price - 100000)), "resi memuat sisa tagihan setelah DP");
+  // Pembayaran di resi: header + tanggal ringkas dd/mm/yy (bukan "Bayar 23 Jul 2026" yang membungkus)
+  ok(resi.textContent.includes("Pembayaran") && /\d{2}\/\d{2}\/\d{2}/.test(resi.textContent) && !resi.textContent.includes("Bayar 2"), "resi: pembayaran pakai header + tanggal ringkas, tak membungkus");
   ok(!resi.innerHTML.includes("r-lunas"), "belum lunas: blok LUNAS tidak tampil");
   ok(d.getElementById("resiPageStyle").textContent.includes("size: 48mm"), "@page = area cetak 48 mm untuk kertas 58");
   ok(!resi.className.includes("w80"), "kertas 58: tanpa kelas w80");
@@ -89,8 +91,11 @@ function boot({ width = 390, idb } = {}) {
   ok(d.getElementById("resiPageStyle").textContent.includes("size: 72mm") && resi.className.includes("w80"), "ganti kertas 80: @page = area cetak 72 mm + kelas w80");
   w.dispatchEvent(new w.Event("afterprint"));
 
-  // Lunas -> blok LUNAS tampil di resi
-  d.getElementById("odPayAmt").value = String(price - 100000);
+  // Input nominal bayar berpemisah ribuan (v41)
+  const paEl = d.getElementById("odPayAmt"); paEl.value = "900000"; w.fmtNum(paEl);
+  ok(paEl.value === "900.000", "input nominal bayar diformat berpemisah ribuan");
+  // Lunas -> blok LUNAS tampil di resi (nominal terformat dgn titik tetap terbaca via pInt)
+  d.getElementById("odPayAmt").value = (price - 100000).toLocaleString("id-ID");
   const payP = w.posAddPayment(); await tick(); await payP; await tick();
   w.posPrintResi();
   ok(resi.innerHTML.includes("r-lunas") && resi.textContent.includes("LUNAS"), "order lunas: blok LUNAS tampil di resi");

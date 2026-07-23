@@ -8,7 +8,7 @@
  * dengan skrip self-unregister (unregister + hapus semua cache) lalu deploy —
  * itu "kill-switch" yang membersihkan SW yang sudah lengket di HP.
  */
-const CACHE = "printcalc-v4";
+const CACHE = "printcalc-v5";
 const CORE = [
   "./",
   "./index.html",
